@@ -1,0 +1,151 @@
+TITLE: Discovering Binance Futures Testnet Instruments (Python)
+DESCRIPTION: This snippet demonstrates how to connect to the Binance Futures testnet using NautilusTrader's Binance adapter and load available instruments. It initializes an HTTP client with API keys from environment variables and then uses a `BinanceFuturesInstrumentProvider` to fetch and load the instruments asynchronously. Requires `asyncio` and environment variables for API keys.
+SOURCE: docs/concepts/adapters.md
+LANGUAGE: python
+KEYWORDS: Binance,async,discover instruments,futures,integration,instrument provider,live trading,testnet
+CODE:
+```
+import asyncio
+import os
+
+from nautilus_trader.adapters.binance.common.enums import BinanceAccountType
+from nautilus_trader.adapters.binance import get_cached_binance_http_client
+from nautilus_trader.adapters.binance.futures.providers import BinanceFuturesInstrumentProvider
+from nautilus_trader.common.component import LiveClock
+
+
+clock = LiveClock()
+account_type = BinanceAccountType.USDT_FUTURE
+
+client = get_cached_binance_http_client(
+    loop=asyncio.get_event_loop(),
+    clock=clock,
+    account_type=account_type,
+    key=os.getenv("BINANCE_FUTURES_TESTNET_API_KEY"),
+    secret=os.getenv("BINANCE_FUTURES_TESTNET_API_SECRET"),
+    is_testnet=True,
+)
+await client.connect()
+
+provider = BinanceFuturesInstrumentProvider(
+    client=client,
+    account_type=BinanceAccountType.USDT_FUTURE,
+)
+
+await provider.load_all_async()
+```
+----------------------------------------
+TITLE: Actor Method to Request Instrument Data (Python/Cython)
+DESCRIPTION: This snippet shows a simplified `request_instrument` method within a NautilusTrader `Actor` or `Strategy`. It constructs a `RequestInstrument` object with the specified instrument ID and optional client ID, then sends this request via an internal method (`_send_data_req`) to a `DataClient`. It includes basic input validation.
+SOURCE: docs/concepts/adapters.md
+LANGUAGE: python
+KEYWORDS: DataClient,RequestInstrument,actor,data subscription,instrument
+CODE:
+```
+# nautilus_trader/common/actor.pyx
+
+cpdef void request_instrument(self, InstrumentId instrument_id, ClientId client_id=None):
+    """
+    Request `Instrument` data for the given instrument ID.
+
+    Parameters
+    ----------
+    instrument_id : InstrumentId
+        The instrument ID for the request.
+    client_id : ClientId, optional
+        The specific client ID for the command.
+        If ``None`` then will be inferred from the venue in the instrument ID.
+    """
+    Condition.not_none(instrument_id, "instrument_id")
+
+    cdef RequestInstrument request = RequestInstrument(
+        instrument_id=instrument_id,
+        start=None,
+        end=None,
+        client_id=client_id,
+        venue=instrument_id.venue,
+        callback=self._handle_instrument_response,
+        request_id=UUID4(),
+        ts_init=self._clock.timestamp_ns(),
+        params=None,
+    )
+
+    self._send_data_req(request)
+```
+----------------------------------------
+TITLE: Configure InstrumentProvider to Load All (Python)
+DESCRIPTION: This configuration snippet shows how to set up the `InstrumentProviderConfig` to automatically load all available instruments when the trading node starts. This is achieved by setting the `load_all` parameter to `True`.
+SOURCE: docs/concepts/adapters.md
+LANGUAGE: python
+KEYWORDS: InstrumentProviderConfig,configuration,instrument provider,live trading,load all
+CODE:
+```
+from nautilus_trader.config import InstrumentProviderConfig
+
+InstrumentProviderConfig(load_all=True)
+```
+----------------------------------------
+TITLE: Configure InstrumentProvider to Load Specific IDs (Python)
+DESCRIPTION: This configuration snippet demonstrates how to configure the `InstrumentProviderConfig` to load only a predefined list of instruments identified by their IDs. The `load_ids` parameter is used to provide a list of instrument identifiers to be loaded on startup.
+SOURCE: docs/concepts/adapters.md
+LANGUAGE: python
+KEYWORDS: InstrumentProviderConfig,configuration,instrument provider,live trading,load by ID
+CODE:
+```
+InstrumentProviderConfig(load_ids=["BTCUSDT-PERP.BINANCE", "ETHUSDT-PERP.BINANCE"])
+```
+----------------------------------------
+TITLE: Processing Data Requests (DataEngine) - Python/Cython
+DESCRIPTION: This snippet from the DataEngine demonstrates how incoming data requests are processed. It shows the registration of the request handler with the message bus and the internal handling logic (_handle_request). The _handle_request function determines the appropriate DataClient based on the request and then dispatches the request, specifically showing how RequestInstrument is routed to the client's request_instrument method.
+SOURCE: docs/concepts/adapters.md
+LANGUAGE: Python
+KEYWORDS: DataClient,DataEngine,RequestInstrument,data handling,data subscription,routing
+CODE:
+```
+self._msgbus.register(endpoint="DataEngine.request", handler=self.request)
+
+cpdef void request(self, RequestData request):
+    self._handle_request(request)
+
+cpdef void _handle_request(self, RequestData request):
+    cdef DataClient client = self._clients.get(request.client_id)
+
+    if client is None:
+        client = self._routing_map.get(request.venue, self._default_client)
+
+    if isinstance(request, RequestInstrument):
+        self._handle_request_instrument(client, request)
+
+cpdef void _handle_request_instrument(self, DataClient client, RequestInstrument request):
+    client.request_instrument(request)
+```
+----------------------------------------
+TITLE: LiveMarketDataClient Handler for Instrument Request (Python)
+DESCRIPTION: This snippet presents a simplified handler method for `RequestInstrument` within a `LiveMarketDataClient`. When a `RequestInstrument` is received, this method creates an asynchronous task (`_request_instrument`) to process the request, retrieve the instrument data, and potentially send it back to the requesting actor or strategy.
+SOURCE: docs/concepts/adapters.md
+LANGUAGE: python
+KEYWORDS: RequestInstrument,async,client:data,handler,live trading
+CODE:
+```
+# nautilus_trader/live/data_client.py
+
+def request_instrument(self, request: RequestInstrument) -> None:
+    self.create_task(self._request_instrument(request))
+```
+----------------------------------------
+TITLE: Handling Instrument Request (Binance Adapter) - Python
+DESCRIPTION: This asynchronous function processes a RequestInstrument message within the Binance data adapter. It first attempts to find the requested instrument using the instrument provider. If the instrument is not found, it logs an error; otherwise, it proceeds to handle the instrument using _handle_instrument.
+SOURCE: docs/concepts/adapters.md
+LANGUAGE: Python
+KEYWORDS: Binance,RequestInstrument,async,client:data,handler,integration,live trading
+CODE:
+```
+async def _request_instrument(self, request: RequestInstrument) -> None:
+    instrument: Instrument | None = self._instrument_provider.find(request.instrument_id)
+
+    if instrument is None:
+        self._log.error(f"Cannot find instrument for {request.instrument_id}")
+        return
+
+    self._handle_instrument(instrument, request.id, request.params)
+```

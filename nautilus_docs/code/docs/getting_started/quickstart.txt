@@ -1,0 +1,293 @@
+TITLE: Import Core NautilusTrader Backtesting Modules
+DESCRIPTION: This Python code imports essential classes and configurations from the `nautilus_trader` library. These modules, including `BacktestDataConfig`, `BacktestEngineConfig`, `BacktestNode`, `BacktestRunConfig`, `BacktestVenueConfig`, `ImportableStrategyConfig`, `LoggingConfig`, `Quantity`, `QuoteTick`, and `ParquetDataCatalog`, are fundamental for setting up and executing a backtesting environment within NautilusTrader.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestEngineConfig,BacktestNode,BacktestRunConfig,ParquetDataCatalog,backtesting,configuration,data catalog,dev:imports,development
+CODE:
+```
+from nautilus_trader.backtest.node import BacktestDataConfig
+from nautilus_trader.backtest.node import BacktestEngineConfig
+from nautilus_trader.backtest.node import BacktestNode
+from nautilus_trader.backtest.node import BacktestRunConfig
+from nautilus_trader.backtest.node import BacktestVenueConfig
+from nautilus_trader.config import ImportableStrategyConfig
+from nautilus_trader.config import LoggingConfig
+from nautilus_trader.model import Quantity
+from nautilus_trader.model import QuoteTick
+from nautilus_trader.persistence.catalog import ParquetDataCatalog
+```
+----------------------------------------
+TITLE: Download and Load NautilusTrader Sample Data
+DESCRIPTION: This Bash script updates apt-get, installs curl, and then downloads and executes a Python script to load sample historical data into the Nautilus persistence format (Parquet). This process typically takes 1-2 minutes and is a prerequisite for running backtests.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: bash
+KEYWORDS: ParquetDataCatalog,data catalog,data handling,data:loading,data:sample,dev:cli,dev:installation,development
+CODE:
+```
+!apt-get update && apt-get install curl -y
+!curl https://raw.githubusercontent.com/nautechsystems/nautilus_data/main/nautilus_data/hist_data_to_catalog.py | python -
+```
+----------------------------------------
+TITLE: Implement a MACD Trading Strategy in Python
+DESCRIPTION: This snippet demonstrates how to build a simple trading strategy using the MACD indicator in Nautilus Trader. It shows how to initialize the indicator, handle quote ticks, and implement entry/exit logic based on MACD values. The example manually updates the indicator to demonstrate flexibility.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: Position,QuoteTick,close position,data type:tick,handler:on_quote_tick,handler:on_start,handler:on_stop,indicator,indicator:MACD,order:create,strategy,trading logic
+CODE:
+```
+from nautilus_trader.core.message import Event
+from nautilus_trader.indicators.macd import MovingAverageConvergenceDivergence
+from nautilus_trader.model import InstrumentId
+from nautilus_trader.model import Position
+from nautilus_trader.model.enums import OrderSide
+from nautilus_trader.model.enums import PositionSide
+from nautilus_trader.model.enums import PriceType
+from nautilus_trader.model.events import PositionOpened
+from nautilus_trader.trading.strategy import Strategy
+from nautilus_trader.trading.strategy import StrategyConfig
+
+
+class MACDConfig(StrategyConfig):
+    instrument_id: InstrumentId
+    fast_period: int = 12
+    slow_period: int = 26
+    trade_size: int = 1_000_000
+    entry_threshold: float = 0.00010
+
+
+class MACDStrategy(Strategy):
+    def __init__(self, config: MACDConfig):
+        super().__init__(config=config)
+        # Our "trading signal"
+        self.macd = MovingAverageConvergenceDivergence(
+            fast_period=config.fast_period, slow_period=config.slow_period, price_type=PriceType.MID
+        )
+
+        self.trade_size = Quantity.from_int(config.trade_size)
+
+        # Convenience
+        self.position: Position | None = None
+
+    def on_start(self):
+        self.subscribe_quote_ticks(instrument_id=self.config.instrument_id)
+
+    def on_stop(self):
+        self.close_all_positions(self.config.instrument_id)
+        self.unsubscribe_quote_ticks(instrument_id=self.config.instrument_id)
+
+    def on_quote_tick(self, tick: QuoteTick):
+        # You can register indicators to receive quote tick updates automatically,
+        # here we manually update the indicator to demonstrate the flexibility available.
+        self.macd.handle_quote_tick(tick)
+
+        if not self.macd.initialized:
+            return  # Wait for indicator to warm up
+
+        # self._log.info(f"{self.macd.value=}:%5d")
+        self.check_for_entry()
+        self.check_for_exit()
+
+    def on_event(self, event: Event):
+        if isinstance(event, PositionOpened):
+            self.position = self.cache.position(event.position_id)
+
+    def check_for_entry(self):
+        # If MACD line is above our entry threshold, we should be LONG
+        if self.macd.value > self.config.entry_threshold:
+            if self.position and self.position.side == PositionSide.LONG:
+                return  # Already LONG
+
+            order = self.order_factory.market(
+                instrument_id=self.config.instrument_id,
+                order_side=OrderSide.BUY,
+                quantity=self.trade_size,
+            )
+            self.submit_order(order)
+        # If MACD line is below our entry threshold, we should be SHORT
+        elif self.macd.value < -self.config.entry_threshold:
+            if self.position and self.position.side == PositionSide.SHORT:
+                return  # Already SHORT
+
+            order = self.order_factory.market(
+                instrument_id=self.config.instrument_id,
+                order_side=OrderSide.SELL,
+                quantity=self.trade_size,
+            )
+            self.submit_order(order)
+
+    def check_for_exit(self):
+        # If MACD line is above zero then exit if we are SHORT
+        if self.macd.value >= 0.0:
+            if self.position and self.position.side == PositionSide.SHORT:
+                self.close_position(self.position)
+        # If MACD line is below zero then exit if we are LONG
+        else:
+            if self.position and self.position.side == PositionSide.LONG:
+                self.close_position(self.position)
+
+    def on_dispose(self):
+        pass  # Do nothing else
+```
+----------------------------------------
+TITLE: Assemble Backtest Run Configuration
+DESCRIPTION: This snippet shows how to consolidate the previously configured engine, venues, and data into a single `BacktestRunConfig` object, which encapsulates the complete backtest setup.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestRunConfig,backtesting,configuration,data handling,engine,venue
+CODE:
+```
+config = BacktestRunConfig(
+    engine=engine,
+    venues=[venue],
+    data=[data],
+)
+```
+----------------------------------------
+TITLE: Initialize and Verify NautilusTrader Parquet Data Catalog
+DESCRIPTION: This Python snippet initializes a `ParquetDataCatalog` instance, which is crucial for accessing historical data in the Nautilus persistence format. It demonstrates how to instantiate the catalog using `from_env()` or a relative path, and then calls `catalog.instruments()` to verify that data, such as the EUR/USD instrument, has been successfully loaded and is accessible.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: ParquetDataCatalog,data catalog,data:persistence,dev:verification,development,from_env,initialization,instrument
+CODE:
+```
+# You can also use a relative path such as `ParquetDataCatalog("./catalog")`,
+# for example if you're running this notebook after the data setup from the docs.
+# catalog = ParquetDataCatalog("./catalog")
+catalog = ParquetDataCatalog.from_env()
+catalog.instruments()
+```
+----------------------------------------
+TITLE: Configure Backtest Engine with Strategies and Logging
+DESCRIPTION: This snippet demonstrates configuring the `BacktestEngineConfig`. It includes adding a strategy (`MACDStrategy`) using `ImportableStrategyConfig`, specifying its path and configuration parameters. It also sets the logging level to 'ERROR' to avoid Jupyter notebook output issues.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestEngineConfig,ImportableStrategyConfig,MACDStrategy,backtesting,configuration,logging,strategy
+CODE:
+```
+# NautilusTrader currently exceeds the rate limit for Jupyter notebook logging (stdout output),
+# this is why the `log_level` is set to "ERROR". If you lower this level to see
+# more logging then the notebook will hang during cell execution. A fix is currently
+# being investigated which involves either raising the configured rate limits for
+# Jupyter, or throttling the log flushing from Nautilus.
+# https://github.com/jupyterlab/jupyterlab/issues/12845
+# https://github.com/deshaw/jupyterlab-limit-output
+engine = BacktestEngineConfig(
+    strategies=[
+        ImportableStrategyConfig(
+            strategy_path="__main__:MACDStrategy",
+            config_path="__main__:MACDConfig",
+            config={
+              "instrument_id": instruments[0].id,
+              "fast_period": 12,
+              "slow_period": 26,
+            },
+        )
+    ],
+    logging=LoggingConfig(log_level="ERROR"),
+)
+```
+----------------------------------------
+TITLE: Execute Backtest using BacktestNode
+DESCRIPTION: This snippet demonstrates how to use the `BacktestNode` class to orchestrate and run the backtest. It initializes the node with the `BacktestRunConfig` and executes it synchronously, returning a list of `BacktestResult` objects.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestNode,BacktestResult,backtesting,configuration,run
+CODE:
+```
+from nautilus_trader.backtest.results import BacktestResult
+
+
+node = BacktestNode(configs=[config])
+
+ # Runs one or many configs synchronously
+results: list[BacktestResult] = node.run()
+```
+----------------------------------------
+TITLE: Generate Positions Report from Backtest Engine
+DESCRIPTION: This snippet calls the `generate_positions_report()` method on the `BacktestEngine` to generate a report summarizing all positions held during the backtest.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,position,reporting & analysis
+CODE:
+```
+engine.trader.generate_positions_report()
+```
+----------------------------------------
+TITLE: Configure Simulated FX ECN Venue in Nautilus Trader
+DESCRIPTION: This snippet demonstrates how to create a `BacktestVenueConfig` for a simulated FX ECN. It specifies the venue name ('SIM'), OMS type, account type ('MARGIN'), base currency ('USD'), and starting balances.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestVenueConfig,FX,backtesting,configuration,margin account,venue,venue:simulated
+CODE:
+```
+venue = BacktestVenueConfig(
+    name="SIM",
+    oms_type="NETTING",
+    account_type="MARGIN",
+    base_currency="USD",
+    starting_balances=["1_000_000 USD"]
+)
+```
+----------------------------------------
+TITLE: Configure Backtest Data for Specific Instruments and Tick Types
+DESCRIPTION: This snippet illustrates how to create a `BacktestDataConfig` for a specific instrument and tick type (QuoteTick). It links to the data catalog path, specifies the data class, instrument ID, and an end time for the data.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestDataConfig,QuoteTick,backtesting,configuration,data catalog,data handling,data type:tick,time range
+CODE:
+```
+from nautilus_trader.model import QuoteTick
+
+
+data = BacktestDataConfig(
+    catalog_path=str(catalog.path),
+    data_cls=QuoteTick,
+    instrument_id=instruments[0].id,
+    end_time="2020-01-10",
+)
+```
+----------------------------------------
+TITLE: Generate Account Report for Specific Venue
+DESCRIPTION: This snippet calls the `generate_account_report()` method on the `BacktestEngine`, specifying a `Venue` object ('SIM') to produce an account report for that particular venue.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: account,backtesting,reporting & analysis,venue,venue:simulated
+CODE:
+```
+engine.trader.generate_account_report(Venue("SIM"))
+```
+----------------------------------------
+TITLE: Load Instruments from Data Catalog in Nautilus Trader
+DESCRIPTION: This snippet shows how to retrieve available instruments from the `ParquetDataCatalog` for use in the backtest configuration.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: data catalog,data:loading,instrument,query
+CODE:
+```
+instruments = catalog.instruments()
+instruments
+```
+----------------------------------------
+TITLE: Retrieve Backtest Engine for Results Analysis
+DESCRIPTION: This snippet shows how to retrieve the `BacktestEngine` instance used internally by the `BacktestNode` after a backtest run, using the run configuration's ID. This engine provides access to various reports and information.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestEngine,BacktestNode,backtesting,reporting & analysis,results
+CODE:
+```
+from nautilus_trader.backtest.engine import BacktestEngine
+from nautilus_trader.model import Venue
+
+
+engine: BacktestEngine = node.get_engine(config.id)
+```
+----------------------------------------
+TITLE: Generate Order Fills Report from Backtest Engine
+DESCRIPTION: This snippet calls the `generate_order_fills_report()` method on the retrieved `BacktestEngine` to produce a report detailing all order fills during the backtest.
+SOURCE: docs/getting_started/quickstart.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,execution,order fills,reporting & analysis
+CODE:
+```
+engine.trader.generate_order_fills_report()
+```

@@ -1,0 +1,80 @@
+TITLE: Handling Primary Orders in ExecAlgorithm (Python)
+DESCRIPTION: This method is called when a primary (original) order is received by the execution algorithm. It is the entry point for processing and potentially spawning secondary orders based on the received order's details and parameters.
+SOURCE: docs/concepts/execution.md
+LANGUAGE: python
+KEYWORDS: algorithm:execution,handler,handler:on_order,order type:primary
+CODE:
+```
+from nautilus_trader.model.orders.base import Order
+
+def on_order(self, order: Order) -> None:
+    # Handle the order here
+```
+----------------------------------------
+TITLE: Querying ExecAlgorithm Orders from Cache (Python)
+DESCRIPTION: This Cache method allows retrieving a list of all orders associated with a specific execution algorithm. It supports optional filtering by venue, instrument, strategy, and order side to narrow down the results.
+SOURCE: docs/concepts/execution.md
+LANGUAGE: python
+KEYWORDS: ExecAlgorithmId,algorithm:execution,cache,documentation:API-reference,order,query
+CODE:
+```
+def orders_for_exec_algorithm(
+    self,
+    exec_algorithm_id: ExecAlgorithmId,
+    venue: Venue | None = None,
+    instrument_id: InstrumentId | None = None,
+    strategy_id: StrategyId | None = None,
+    side: OrderSide = OrderSide.NO_ORDER_SIDE,
+) -> list[Order]:
+```
+----------------------------------------
+TITLE: Querying Orders for Specific Exec Spawn ID from Cache (Python)
+DESCRIPTION: This Cache method retrieves all orders (including the primary order) that belong to a specific execution spawn series, identified by its unique exec_spawn_id (which is the ClientOrderId of the original primary order).
+SOURCE: docs/concepts/execution.md
+LANGUAGE: python
+KEYWORDS: ClientOrderId,algorithm:execution,cache,documentation:API-reference,exec_spawn_id,order,query
+CODE:
+```
+def orders_for_exec_spawn(self, exec_spawn_id: ClientOrderId) -> list[Order]:
+```
+----------------------------------------
+TITLE: Configuring Strategy with TWAP Parameters - Python
+DESCRIPTION: Shows how to configure a strategy, specifically EMACrossTWAP, including parameters relevant to the TWAP execution algorithm such as the total execution horizon and the interval between child orders. This configuration is passed during strategy instantiation.
+SOURCE: docs/concepts/execution.md
+LANGUAGE: python
+KEYWORDS: EMACrossTWAPConfig,algorithm:TWAP,configuration,strategy
+CODE:
+```
+from decimal import Decimal
+from nautilus_trader.model.data import BarType
+from nautilus_trader.test_kit.providers import TestInstrumentProvider
+from nautilus_trader.examples.strategies.ema_cross_twap import EMACrossTWAP, EMACrossTWAPConfig
+
+# Configure your strategy
+config = EMACrossTWAPConfig(
+    instrument_id=TestInstrumentProvider.ethusdt_binance().id,
+    bar_type=BarType.from_str("ETHUSDT.BINANCE-250-TICK-LAST-INTERNAL"),
+    trade_size=Decimal("0.05"),
+    fast_ema_period=10,
+    slow_ema_period=20,
+    twap_horizon_secs=10.0,   # execution algorithm parameter (total horizon in seconds)
+    twap_interval_secs=2.5    # execution algorithm parameter (seconds between orders)
+)
+
+# Instantiate your strategy
+strategy = EMACrossTWAP(config=config)
+```
+----------------------------------------
+TITLE: Registering TWAP Execution Algorithm with BacktestEngine - Python
+DESCRIPTION: Demonstrates how to instantiate the TWAPExecAlgorithm and add it to an initialized BacktestEngine instance. This makes the algorithm available for use within the backtesting environment.
+SOURCE: docs/concepts/execution.md
+LANGUAGE: python
+KEYWORDS: TWAPExecAlgorithm,add_exec_algorithm,algorithm:TWAP,backtesting
+CODE:
+```
+from nautilus_trader.examples.algorithms.twap import TWAPExecAlgorithm
+
+# `engine` is an initialized BacktestEngine instance
+exec_algorithm = TWAPExecAlgorithm()
+engine.add_exec_algorithm(exec_algorithm)
+```

@@ -1,0 +1,221 @@
+TITLE: Configuring Message Bus Type Filtering in Nautilus Trader (Python)
+DESCRIPTION: This snippet demonstrates how to configure the Nautilus Trader message bus to filter out specific message types from external publication. By passing a list of `type` objects (e.g., `QuoteTick`, `TradeTick`) to the `types_filter` parameter of `MessageBusConfig`, messages of these types will be excluded from being written to the stream, preventing data flooding. This is particularly useful for managing high-frequency data.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: Python
+KEYWORDS: MessageBusConfig,QuoteTick,TradeTick,configuration,data type:tick,feature:type-filter,live trading,message bus
+CODE:
+```
+from nautilus_trader.config import MessageBusConfig
+from nautilus_trader.data import TradeTick
+from nautilus_trader.data import QuoteTick
+
+# Create a MessageBusConfig instance with types filtering
+message_bus = MessageBusConfig(
+    types_filter=[QuoteTick, TradeTick]
+)
+```
+----------------------------------------
+TITLE: Implementing Structured Data Publish/Subscribe in Nautilus Trader (Python)
+DESCRIPTION: This snippet demonstrates how to define, publish, and subscribe to custom structured trading data using Nautilus Trader's `Data` class and `@customdataclass` decorator. It shows how to create a `GreeksData` class with `delta` and `gamma` attributes, publish an instance of it, subscribe to receive `GreeksData`, and handle incoming data via the `on_data` callback. The `ts_event` and `ts_init` timestamps are crucial for proper event ordering in backtests.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: python
+KEYWORDS: Data,GreeksData,data type:custom,handler:on_data,message bus,publish-subscribe
+CODE:
+```
+from nautilus_trader.core.data import Data
+from nautilus_trader.model.custom import customdataclass
+
+@customdataclass
+class GreeksData(Data):
+    delta: float
+    gamma: float
+
+# Publish data (in Actor / Strategy)
+data = GreeksData(delta=0.75, gamma=0.1, ts_event=1_630_000_000_000_000_000, ts_init=1_630_000_000_000_000_000)
+self.publish_data(GreeksData, data)
+
+# Subscribe to receiving data  (in Actor / Strategy)
+self.subscribe_data(GreeksData)
+
+# Handler (this is static callback function with fixed name)
+def on_data(self, data: Data):
+    if isinstance(data, GreeksData):
+        self.log.info(f"Delta: {data.delta}, Gamma: {data.gamma}")
+```
+----------------------------------------
+TITLE: Configuring Nautilus MessageBus in Python
+DESCRIPTION: This code snippet demonstrates how to configure the `MessageBus` within a `TradingNodeConfig`. It shows various options such as `database` settings (e.g., Redis), `encoding` (JSON or MessagePack), `timestamps_as_iso8601` for timestamp formatting, `buffer_interval_ms`, `autotrim_mins`, and options for message stream keys like `use_trader_prefix`, `use_trader_id`, `use_instance_id`, `streams_prefix`, and `types_filter`.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: Python
+KEYWORDS: DatabaseConfig,MessageBusConfig,configuration,feature:type-filter,live trading,message bus,streams
+CODE:
+```
+...  # Other config omitted
+message_bus=MessageBusConfig(
+    database=DatabaseConfig(),
+    encoding="json",
+    timestamps_as_iso8601=True,
+    buffer_interval_ms=100,
+    autotrim_mins=30,
+    use_trader_prefix=True,
+    use_trader_id=True,
+    use_instance_id=False,
+    streams_prefix="streams",
+    types_filter=[QuoteTick, TradeTick],
+)
+...
+```
+----------------------------------------
+TITLE: Publishing Data and Signals via Actor/Strategy Methods - Python
+DESCRIPTION: These Python methods, available in `Actor` and `Strategy` classes, provide a high-level interface to publish custom data (`publish_data`) and generic signals (`publish_signal`). They abstract away direct `MessageBus` interaction, offering a convenient way to send information within the system efficiently.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: Python
+KEYWORDS: actor,data handling,documentation:API-reference,message bus,publish-subscribe,signal,strategy
+CODE:
+```
+def publish_data(self, data_type: DataType, data: Data) -> None:
+def publish_signal(self, name: str, value, ts_event: int | None = None) -> None:
+```
+----------------------------------------
+TITLE: Implementing Lightweight Signal Publish/Subscribe in Nautilus Trader (Python)
+DESCRIPTION: This snippet illustrates how to use Nautilus Trader's signal messaging for lightweight notifications. It shows how to define signal constants, subscribe to specific signals, publish a signal with a name, value, and timestamp, and handle incoming signals using the `on_signal` callback. Signals are limited to single primitive values (`int`, `float`, `str`) and are matched by their `value` in the handler.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: python
+KEYWORDS: handler:on_signal,lightweight messaging,message bus,publish-subscribe,signal
+CODE:
+```
+# Define signal constants for better organization (optional but recommended)
+import types
+from nautilus_trader.core.datetime import unix_nanos_to_dt
+from nautilus_trader.common.enums import LogColor
+
+signals = types.SimpleNamespace()
+signals.NEW_HIGHEST_PRICE = "NewHighestPriceReached"
+signals.NEW_LOWEST_PRICE = "NewLowestPriceReached"
+
+# Subscribe to signals (in Actor/Strategy)
+self.subscribe_signal(signals.NEW_HIGHEST_PRICE)
+self.subscribe_signal(signals.NEW_LOWEST_PRICE)
+
+# Publish a signal (in Actor/Strategy)
+self.publish_signal(
+    name=signals.NEW_HIGHEST_PRICE,
+    value=signals.NEW_HIGHEST_PRICE,  # value can be the same as name for simplicity
+    ts_event=bar.ts_event  # timestamp from triggering event
+)
+
+# Handler (this is static callback function with fixed name)
+def on_signal(self, signal):
+    # IMPORTANT: We match against signal.value, not signal.name
+    match signal.value:
+        case signals.NEW_HIGHEST_PRICE:
+            self.log.info(
+                f"New highest price was reached. | "
+                f"Signal value: {signal.value} | "
+                f"Signal time: {unix_nanos_to_dt(signal.ts_event)}",
+                color=LogColor.GREEN
+            )
+        case signals.NEW_LOWEST_PRICE:
+            self.log.info(
+                f"New lowest price was reached. | "
+                f"Signal value: {signal.value} | "
+                f"Signal time: {unix_nanos_to_dt(signal.ts_event)}",
+                color=LogColor.RED
+            )
+```
+----------------------------------------
+TITLE: Registering Custom Serializable Types in Python
+DESCRIPTION: This function signature illustrates how to register custom Python types for serialization within Nautilus. It requires the type itself, a `to_dict` callable to convert the object to a dictionary of primitive types, and a `from_dict` callable to reconstruct the object from such a dictionary. This enables Nautilus to handle custom data structures for external publishing.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: Python
+KEYWORDS: customization,data type:custom,from_dict,message bus,register_serializable_type,serialization,to_dict
+CODE:
+```
+def register_serializable_type(
+    cls,
+    to_dict: Callable[[Any], dict[str, Any]],
+    from_dict: Callable[[dict[str, Any]], Any],
+):
+    ...
+```
+----------------------------------------
+TITLE: Implementing Custom Event Publish/Subscribe with MessageBus - Python
+DESCRIPTION: This example demonstrates the core publish/subscribe pattern using the `MessageBus` for custom events. It involves defining a custom `Event` class with a `TOPIC`, subscribing a handler method to that topic, and then publishing instances of the custom event, enabling decoupled communication between components.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: Python
+KEYWORDS: customization,decoupled communication,event handling,handler,message bus,publish-subscribe
+CODE:
+```
+from nautilus_trader.core.message import Event
+
+# Define a custom event
+class Each10thBarEvent(Event):
+    TOPIC = "each_10th_bar"  # Topic name
+    def __init__(self, bar):
+        self.bar = bar
+
+# Subscribe in a component (in Strategy)
+self.msgbus.subscribe(Each10thBarEvent.TOPIC, self.on_each_10th_bar)
+
+# Publish an event (in Strategy)
+event = Each10thBarEvent(bar)
+self.msgbus.publish(Each10thBarEvent.TOPIC, event)
+
+# Handler (in Strategy)
+def on_each_10th_bar(self, event: Each10thBarEvent):
+    self.log.info(f"Received 10th bar: {event.bar}")
+```
+----------------------------------------
+TITLE: Publishing Custom Messages Directly via MessageBus - Python
+DESCRIPTION: For advanced use cases or specialized scenarios, `Actor` and `Strategy` classes offer direct access to the underlying `MessageBus` via `self.msgbus`. This allows publishing custom messages to any string-based topic with any Python object as the payload, providing maximum flexibility for system-level communication.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: Python
+KEYWORDS: actor,customization,direct access,message bus,publish-subscribe,strategy
+CODE:
+```
+self.msgbus.publish("MyTopic", "MyMessage")
+```
+----------------------------------------
+TITLE: Configuring Consumer Node for External Binance Stream (Python)
+DESCRIPTION: This Python configuration sets up a consumer node to receive messages from the 'binance' external stream via its `MessageBus`. It also declares 'BINANCE_EXT' as an `external_client` in `LiveDataEngineConfig`, preventing the `DataEngine` from sending data commands to this client, as data is expected from the external stream.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: python
+KEYWORDS: Binance,configuration,consumer,external stream,integration,live trading,message bus
+CODE:
+```
+data_engine=LiveDataEngineConfig(
+    external_clients=[ClientId("BINANCE_EXT")],
+),
+message_bus=MessageBusConfig(
+    database=DatabaseConfig(timeout=2),
+    external_streams=["binance"],  # <---
+),
+```
+----------------------------------------
+TITLE: Configuring Producer Node for External Binance Stream (Python)
+DESCRIPTION: This Python configuration sets up the `MessageBus` for a producer node to publish data to an external stream named 'binance'. It disables `use_trader_id`, `use_trader_prefix`, and `use_instance_id` for predictable stream keys, ensuring consumer nodes can easily subscribe to the data.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: python
+KEYWORDS: Binance,configuration,external stream,integration,live trading,message bus,producer
+CODE:
+```
+message_bus=MessageBusConfig(
+    database=DatabaseConfig(timeout=2),
+    use_trader_id=False,
+    use_trader_prefix=False,
+    use_instance_id=False,
+    streams_prefix="binance",  # <---
+    stream_per_topic=False,
+    autotrim_mins=30,
+),
+```
+----------------------------------------
+TITLE: Nautilus Message Stream Key Structure
+DESCRIPTION: This snippet illustrates the typical structure of a message stream key used by the Nautilus `MessageBus` for identifying trader nodes and organizing messages. The key format `trader:{trader_id}:{instance_id}:{streams_prefix}` allows for flexible configuration based on whether a trader prefix, trader ID, instance ID, or a custom streams prefix should be included.
+SOURCE: docs/concepts/message_bus.md
+LANGUAGE: Text
+KEYWORDS: Text,configuration,documentation,key structure,message bus,streams
+CODE:
+```
+trader:{trader_id}:{instance_id}:{streams_prefix}
+```

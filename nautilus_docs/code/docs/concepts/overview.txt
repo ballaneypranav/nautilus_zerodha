@@ -1,0 +1,145 @@
+TITLE: Nautilus Trader Value Types and Precision Modes
+DESCRIPTION: Describes the core value types (Price, Quantity, Money) and their underlying raw integer backing, which varies based on the enabled precision mode (128-bit high-precision or 64-bit standard-precision) during compilation.
+SOURCE: docs/concepts/overview.md
+LANGUAGE: APIDOC
+KEYWORDS: Money,Price,Quantity,data types,documentation:API-reference,feature:high-precision,feature:standard-precision
+CODE:
+```
+Value Types:
+- Price
+- Quantity
+- Money
+
+High-precision mode (128-bit):
+  Type      | Raw backing | Max precision | Min value           | Max value
+  ----------|-------------|---------------|---------------------|-------------------
+  Price     | i128        | 16            | -17,014,118,346,046 | 17,014,118,346,046
+  Money     | i128        | 16            | -17,014,118,346,046 | 17,014,118,346,046
+  Quantity  | u128        | 16            | 0                   | 34,028,236,692,093
+
+Standard-precision mode (64-bit):
+  Type      | Raw backing | Max precision | Min value           | Max value
+  ----------|-------------|---------------|---------------------|-------------------
+  Price     | i64         | 9             | -9,223,372,036      | 9,223,372,036
+  Money     | i64         | 9             | -9,223,372,036      | 9,223,372,036
+  Quantity  | u64         | 9             | 0                   | 18,446,744,073
+```
+----------------------------------------
+TITLE: Supported Account Types in Nautilus Trader
+DESCRIPTION: Details the different account types available for both live trading and backtesting environments, covering single and multi-currency cash and margin accounts, as well as betting accounts.
+SOURCE: docs/concepts/overview.md
+LANGUAGE: APIDOC
+KEYWORDS: account type,cash account,documentation:API-reference,margin account
+CODE:
+```
+Account Types:
+- Cash (single-currency, base currency)
+- Cash (multi-currency)
+- Margin (single-currency, base currency)
+- Margin (multi-currency)
+- Betting (single-currency)
+```
+----------------------------------------
+TITLE: Nautilus Trader Market Data and Price Types
+DESCRIPTION: Lists the various market data types available for historical requests and live streams, along with the supported PriceType options for bar aggregations within the Nautilus Trader platform.
+SOURCE: docs/concepts/overview.md
+LANGUAGE: APIDOC
+KEYWORDS: Bar,OrderBookDelta,PriceType,QuoteTick,TradeTick,bar,data type:order-book-delta,data type:tick,documentation:API-reference,market data
+CODE:
+```
+Market Data Types:
+  - OrderBookDelta (L1/L2/L3)
+  - OrderBookDeltas (container type)
+  - OrderBookDepth10 (fixed depth of 10 levels per side)
+  - QuoteTick
+  - TradeTick
+  - Bar
+  - Instrument
+  - InstrumentStatus
+  - InstrumentClose
+
+PriceType Options for Bar Aggregations:
+  - BID
+  - ASK
+  - MID
+  - LAST
+```
+----------------------------------------
+TITLE: Available Bar Aggregation Methods in Nautilus Trader
+DESCRIPTION: Lists the various methods for aggregating price data into bars, including time-based, tick-based, volume-based, and value-based aggregations. These can be combined with step sizes through a BarSpecification for maximum flexibility.
+SOURCE: docs/concepts/overview.md
+LANGUAGE: APIDOC
+KEYWORDS: BarAggregation,bar,data:aggregation,documentation:API-reference
+CODE:
+```
+BarAggregation Methods:
+- MILLISECOND
+- SECOND
+- MINUTE
+- HOUR
+- DAY
+- WEEK
+- MONTH
+- TICK
+- VOLUME
+- VALUE (a.k.a Dollar bars)
+- TICK_IMBALANCE
+- TICK_RUNS
+- VOLUME_IMBALANCE
+- VOLUME_RUNS
+- VALUE_IMBALANCE
+- VALUE_RUNS
+```
+----------------------------------------
+TITLE: Available Order Types in Nautilus Trader
+DESCRIPTION: Enumerates the standard and advanced order types supported by Nautilus Trader, subject to venue availability, including market, limit, stop, and trailing orders.
+SOURCE: docs/concepts/overview.md
+LANGUAGE: APIDOC
+KEYWORDS: documentation:API-reference,limit order,market order,order types,stop order,trailing stop order
+CODE:
+```
+Order Types:
+- MARKET
+- LIMIT
+- STOP_MARKET
+- STOP_LIMIT
+- MARKET_TO_LIMIT
+- MARKET_IF_TOUCHED
+- LIMIT_IF_TOUCHED
+- TRAILING_STOP_MARKET
+- TRAILING_STOP_LIMIT
+```
+----------------------------------------
+TITLE: Timestamp Format Specification (ISO 8601 / RFC 3339)
+DESCRIPTION: Describes the nanosecond precision UTC timestamp format used across the platform, following ISO 8601 (RFC 3339) with specific precision and timezone requirements.
+SOURCE: docs/concepts/overview.md
+LANGUAGE: APIDOC
+KEYWORDS: ISO 8601,RFC 3339,UTC,data types,documentation:API-reference,format,nanosecond,timestamp
+CODE:
+```
+Timestamp Format:
+  Precision: Nanosecond (9 decimal places) or Millisecond (3 decimal places)
+  Timezone: UTC (designated by 'Z' suffix)
+  Format: ISO 8601 (RFC 3339)
+  Components:
+    - Full date: YYYY-MM-DD
+    - 'T' separator
+    - Time with precision
+    - 'Z' suffix
+  Example: 2024-01-05T15:30:45.123456789Z
+```
+----------------------------------------
+TITLE: UUID v4 Format Specification (RFC 4122)
+DESCRIPTION: Details the Universally Unique Identifier (UUID) version 4 format used for unique identifiers, adhering to RFC 4122 with specific group and version designations.
+SOURCE: docs/concepts/overview.md
+LANGUAGE: APIDOC
+KEYWORDS: RFC 4122,UUID,data types,documentation:API-reference,format,unique ID
+CODE:
+```
+UUID v4 Format:
+  Standard: RFC 4122
+  Structure: 32 hexadecimal digits in 5 groups (8-4-4-4-12) separated by hyphens
+  Version: 4 (third group starts with '4')
+  Variant: RFC 4122 (fourth group starts with '8', '9', 'a', or 'b')
+  Example: 2d89666b-1a1e-4a75-b193-4eb3b454c757
+```

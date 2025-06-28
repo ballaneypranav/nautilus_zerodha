@@ -1,0 +1,285 @@
+TITLE: Install NautilusTrader Development Dependencies
+DESCRIPTION: Installs all active, group, and extra dependencies required for NautilusTrader development and testing using uv or make. This step should be completed once.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Bash
+KEYWORDS: dev:dependencies,dev:environment,dev:installation,dev:package-management,development
+CODE:
+```
+uv sync --active --all-groups --all-extras
+```
+
+LANGUAGE: Bash
+CODE:
+```
+make install
+```
+----------------------------------------
+TITLE: Example .env Configuration for Nautilus CLI Database Access
+DESCRIPTION: This example `.env` file provides the necessary environment variables for the Nautilus CLI to connect to the PostgreSQL database. It defines host, port, username, password, and the target database name.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: bash
+KEYWORDS: CLI,configuration,configuration:environment-variables,dev:cli,development,tech:database,technology
+CODE:
+```
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USERNAME=postgres
+POSTGRES_PASSWORD=pass
+POSTGRES_DATABASE=nautilus
+```
+----------------------------------------
+TITLE: Create 'nautilus' Database in PostgreSQL
+DESCRIPTION: After logging into the PostgreSQL administrator account, this SQL command creates a new database named `nautilus`. This database will be used by the NautilusTrader application.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: sql
+KEYWORDS: CLI,CREATE DATABASE,dev:cli,dev:installation,development,tech:database,technology
+CODE:
+```
+psql (16.2, server 15.2 (Debian 15.2-1.pgdg110+1))
+Type "help" for help.
+
+postgres=# CREATE DATABASE nautilus;
+CREATE DATABASE
+
+```
+----------------------------------------
+TITLE: Install NautilusTrader in Debug Mode
+DESCRIPTION: Compiles and installs the NautilusTrader project in debug mode, which is significantly faster for frequent development and iteration compared to a fully optimized build.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Bash
+KEYWORDS: dev:build,dev:installation,dev:source-build,development,feature:debug-mode
+CODE:
+```
+make install-debug
+```
+----------------------------------------
+TITLE: Bootstrap NautilusTrader Services with Docker Compose
+DESCRIPTION: This command starts all services defined in the `docker-compose.yml` file in detached mode, including Postgres, Redis, and PgAdmin. It's intended for setting up the NautilusTrader development environment.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: bash
+KEYWORDS: PgAdmin,PostgreSQL,Redis,dev:environment,dev:installation,development,tech:database,tech:docker-compose,technology
+CODE:
+```
+docker-compose up -d
+```
+----------------------------------------
+TITLE: Install Nautilus CLI using Makefile
+DESCRIPTION: This command uses a Makefile target to install the Nautilus CLI. It leverages `cargo install` to place the `nautilus` binary in the system's PATH, assuming Rust's `cargo` is configured.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: bash
+KEYWORDS: CLI,cargo,dev:cli,dev:installation,development,make
+CODE:
+```
+make install-cli
+```
+----------------------------------------
+TITLE: Apply Cargo.toml Patch for Cranelift Backend
+DESCRIPTION: Provides a Git patch to modify the workspace Cargo.toml file. This patch enables the codegen-backend feature and sets "cranelift" as the backend for dev, test, and nextest profiles, drastically improving compilation speed.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Diff
+KEYWORDS: Cargo.toml,Cranelift,build speed,compilation,dev:environment,development,language:rust,patch
+CODE:
+```
+diff --git a/Cargo.toml b/Cargo.toml
+index 62b78cd8d0..beb0800211 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,3 +1,6 @@
++# This line needs to come before anything else in Cargo.toml
+cargo-features = ["codegen-backend"]
+
+ [workspace]
+ resolver = "2"
+ members = [
+@@ -140,6 +143,7 @@ lto = false
+ panic = "unwind"
+ incremental = true
+ codegen-units = 256
++codegen-backend = "cranelift"
+
+ [profile.test]
+ opt-level = 0
+@@ -150,11 +154,13 @@ strip = false
+ lto = false
+ incremental = true
+ codegen-units = 256
++codegen-backend = "cranelift"
+
+ [profile.nextest]
+ inherits = "test"
+ debug = false # Improves compile times
+ strip = "debuginfo" # Improves compile times
++codegen-backend = "cranelift"
+
+ [profile.release]
+ opt-level = 3
+
+```
+----------------------------------------
+TITLE: Configure PYO3_PYTHON for Rust Analyzer
+DESCRIPTION: An optional step for frequent Rust development to configure the PYO3_PYTHON environment variable in .cargo/config.toml. This helps rust-analyzer and IDEs reduce recompilation times by pointing to the correct Python interpreter.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Bash
+KEYWORDS: IDE,PyO3,configuration,dev:environment,development,language:rust,rust-analyzer
+CODE:
+```
+PYTHON_PATH=$(which python)
+echo -e "\n[env]\nPYO3_PYTHON = \"$PYTHON_PATH\"" >> .cargo/config.toml
+```
+----------------------------------------
+TITLE: Install Rust Nightly Toolchain for Cranelift
+DESCRIPTION: Installs the Rust nightly toolchain and configures rust-analyzer to utilize it. This is a prerequisite for enabling the Cranelift backend, which significantly reduces build times for development and testing.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Bash
+KEYWORDS: Cranelift,build speed,dev:environment,dev:installation,development,language:rust,nightly
+CODE:
+```
+rustup install nightly
+rustup override set nightly
+rustup component add rust-analyzer # install nightly lsp
+rustup override set stable # reset to stable
+```
+----------------------------------------
+TITLE: Start Specific Docker Compose Service
+DESCRIPTION: This command allows starting only a specified service, such as `postgres`, from the `docker-compose.yml` file in detached mode. This is useful for running only necessary components.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: bash
+KEYWORDS: PostgreSQL,dev:installation,dev:tooling,development,start service,tech:database,tech:docker-compose,technology
+CODE:
+```
+docker-compose up -d postgres
+```
+----------------------------------------
+TITLE: Recompile NautilusTrader Project Files
+DESCRIPTION: Recompiles .rs, .pyx, or .pxd files after changes, ensuring that the latest modifications are reflected in the project build. This can be done using uv or make.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Bash
+KEYWORDS: dev:build,dev:recompile,development
+CODE:
+```
+uv run --no-sync python build.py
+```
+
+LANGUAGE: Bash
+CODE:
+```
+make build
+```
+----------------------------------------
+TITLE: Set Up Git Pre-Commit Hook
+DESCRIPTION: Installs the pre-commit hook, which automatically runs various checks, auto-formatters, and linting tools before each commit, ensuring code quality.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Bash
+KEYWORDS: code quality,dev:environment,dev:installation,development,git,pre-commit
+CODE:
+```
+pre-commit install
+```
+----------------------------------------
+TITLE: Configure Rust Analyzer in Astro Nvim LSP
+DESCRIPTION: This configuration snippet for Astro Nvim's LSP setup enables `rust_analyzer` with specific settings. It configures `rust-analyzer` to restart on config changes, links to `Cargo.toml`, and sets up environment variables for `cargo` commands, `check` operations, and `runnables`, including `VIRTUAL_ENV`, `CC`, and `CXX`. It also enables the test explorer.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Lua
+KEYWORDS: IDE,IDE:AstroNvim,IDE:Neovim,LSP,configuration,dev:environment,development,language:lua,rust-analyzer
+CODE:
+```
+    config = {
+      rust_analyzer = {
+        settings = {
+          ["rust-analyzer"] = {
+            restartServerOnConfigChange = true,
+            linkedProjects = { "Cargo.toml" },
+            cargo = {
+              features = "all",
+              extraEnv = {
+                VIRTUAL_ENV = "<path-to-your-virtual-environment>/.venv",
+                CC = "clang",
+                CXX = "clang++"
+              }
+            },
+            check = {
+              workspace = false,
+              command = "check",
+              features = "all",
+              extraEnv = {
+                VIRTUAL_ENV = "<path-to-your-virtual-environment>/.venv",
+                CC = "clang",
+                CXX = "clang++"
+              }
+            },
+            runnables = {
+              extraEnv = {
+                VIRTUAL_ENV = "<path-to-your-virtual-environment>/.venv",
+                CC = "clang",
+                CXX = "clang++"
+              }
+            },
+            testExplorer = true
+          }
+        }
+      }
+    }
+```
+----------------------------------------
+TITLE: Configure Rust Analyzer Settings for VSCode
+DESCRIPTION: These JSON settings configure Rust Analyzer within VSCode to optimize compilation times and integrate with the project's environment. They include settings for linked projects, features, and extra environment variables for compilers and virtual environments.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: json
+KEYWORDS: IDE,VSCode,configuration,dev:environment,development,rust-analyzer
+CODE:
+```
+    "rust-analyzer.restartServerOnConfigChange": true,
+    "rust-analyzer.linkedProjects": [
+        "Cargo.toml"
+    ],
+    "rust-analyzer.cargo.features": "all",
+    "rust-analyzer.check.workspace": false,
+    "rust-analyzer.check.extraEnv": {
+        "VIRTUAL_ENV": "<path-to-your-virtual-environment>/.venv",
+        "CC": "clang",
+        "CXX": "clang++"
+    },
+    "rust-analyzer.cargo.extraEnv": {
+        "VIRTUAL_ENV": "<path-to-your-virtual-environment>/.venv",
+        "CC": "clang",
+        "CXX": "clang++"
+    },
+    "rust-analyzer.runnables.extraEnv": {
+        "VIRTUAL_ENV": "<path-to-your-virtual-environment>/.venv",
+        "CC": "clang",
+        "CXX": "clang++"
+    },
+    "rust-analyzer.check.features": "all",
+    "rust-analyzer.testExplorer": true
+
+```
+----------------------------------------
+TITLE: Connect to PostgreSQL Database via psql CLI
+DESCRIPTION: This command connects to the PostgreSQL database using the `psql` command-line interface. It specifies the host, port, and user for the connection, typically used to log in as the `postgres` administrator.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: bash
+KEYWORDS: CLI,dev:cli,development,psql,tech:database,technology
+CODE:
+```
+psql -h localhost -p 5432 -U postgres
+```
+----------------------------------------
+TITLE: Recompile NautilusTrader in Debug Mode
+DESCRIPTION: Recompiles the NautilusTrader project in debug mode, offering significantly faster build times for development and iteration compared to a fully optimized release build.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Bash
+KEYWORDS: dev:build,dev:recompile,development,feature:debug-mode
+CODE:
+```
+make build-debug
+```
+----------------------------------------
+TITLE: Skip Git Tracking for .cargo/config.toml
+DESCRIPTION: Configures Git to skip tracking local modifications to .cargo/config.toml, preventing accidental commits of development-specific configurations. Tracking can be restored with git update-index --no-skip-worktree.
+SOURCE: docs/developer_guide/environment_setup.md
+LANGUAGE: Bash
+KEYWORDS: configuration,dev:environment,development,git,skip-worktree
+CODE:
+```
+git update-index --skip-workworktree .cargo/config.toml
+```

@@ -1,0 +1,295 @@
+TITLE: dYdX API Credential Environment Variables
+DESCRIPTION: This section outlines the environment variables used to supply API credentials for dYdX live and testnet clients. Using these variables is the recommended method for managing sensitive information like wallet addresses and mnemonics.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: APIDOC
+KEYWORDS: API credentials,configuration,configuration:environment-variables,dYdX,documentation:API-reference,integration,mnemonic,security,wallet
+CODE:
+```
+For dYdX live clients:
+- DYDX_WALLET_ADDRESS
+- DYDX_MNEMONIC
+
+For dYdX testnet clients:
+- DYDX_TESTNET_WALLET_ADDRESS
+- DYDX_TESTNET_MNEMONIC
+```
+----------------------------------------
+TITLE: Configure Nautilus Trader for dYdX Live Data and Execution Clients
+DESCRIPTION: This snippet demonstrates how to configure the `TradingNodeConfig` object to include dYdX data and execution clients. It specifies the wallet address, testnet status for data, and subaccount and mnemonic for execution, which are essential for trading perpetual futures contracts on dYdX.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: python
+KEYWORDS: TradingNodeConfig,client:data,client:execution,configuration,dYdX,integration,live trading,mnemonic,wallet
+CODE:
+```
+from nautilus_trader.live.node import TradingNode
+
+config = TradingNodeConfig(
+    ...,  # Omitted
+    data_clients={
+        "DYDX": {
+            "wallet_address": "YOUR_DYDX_WALLET_ADDRESS",
+            "is_testnet": False,
+        },
+    },
+    exec_clients={
+        "DYDX": {
+            "wallet_address": "YOUR_DYDX_WALLET_ADDRESS",
+            "subaccount": "YOUR_DYDX_SUBACCOUNT_NUMBER"
+            "mnemonic": "YOUR_MNEMONIC",
+            "is_testnet": False,
+        },
+    },
+)
+```
+----------------------------------------
+TITLE: dYdX Execution Client Configuration Options
+DESCRIPTION: Describes the available configuration options for the dYdX execution client, including `subaccount`, `wallet_address`, `mnemonic`, and `is_testnet`, along with their default values and descriptions.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: APIDOC
+KEYWORDS: client:execution,configuration,dYdX,documentation:API-reference,integration,mnemonic,subaccount,testnet,wallet
+CODE:
+```
+Configuration Options:
+  subaccount:
+    Default: 0
+    Description: Subaccount number (venue creates subaccount 0 by default).
+  wallet_address:
+    Default: None
+    Description: dYdX wallet address for the account.
+  mnemonic:
+    Default: None
+    Description: Mnemonic for generating private key for order signing.
+  is_testnet:
+    Default: False
+    Description: If True, connects to testnet; if False, connects to mainnet.
+```
+----------------------------------------
+TITLE: Constructing a Long-Term dYdX Order
+DESCRIPTION: Demonstrates how to create a long-term limit order in NautilusTrader for dYdX by setting the `is_short_term_order` tag to `False`. This ensures the order persists beyond the immediate block, suitable for orders not intended for immediate execution.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: python
+KEYWORDS: DYDXOrderTags,dYdX,integration,order management,order type:limit,order type:long-term,order:create,strategy
+CODE:
+```
+from nautilus_trader.adapters.dydx import DYDXOrderTags
+
+order: LimitOrder = self.order_factory.limit(
+    instrument_id=self.instrument_id,
+    order_side=OrderSide.BUY,
+    quantity=self.instrument.make_qty(self.trade_size),
+    price=self.instrument.make_price(price),
+    time_in_force=TimeInForce.GTD,
+    expire_time=self.clock.utc_now() + pd.Timedelta(minutes=10),
+    post_only=True,
+    emulation_trigger=self.emulation_trigger,
+    tags=[DYDXOrderTags(is_short_term_order=False).value],
+)
+```
+----------------------------------------
+TITLE: Specifying Active Blocks for a Short-Term dYdX Order
+DESCRIPTION: Shows how to create a short-term limit order for dYdX and specify the number of blocks it remains active using the `num_blocks_open` parameter in `DYDXOrderTags`. This is useful for high-throughput market makers who need orders to be active for a limited number of blocks.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: python
+KEYWORDS: DYDXOrderTags,active blocks,dYdX,integration,order management,order type:limit,order type:short-term,order:create,strategy
+CODE:
+```
+from nautilus_trader.adapters.dydx import DYDXOrderTags
+
+order: LimitOrder = self.order_factory.limit(
+    instrument_id=self.instrument_id,
+    order_side=OrderSide.BUY,
+    quantity=self.instrument.make_qty(self.trade_size),
+    price=self.instrument.make_price(price),
+    time_in_force=TimeInForce.GTD,
+    expire_time=self.clock.utc_now() + pd.Timedelta(seconds=5),
+    post_only=True,
+    emulation_trigger=self.emulation_trigger,
+    tags=[DYDXOrderTags(is_short_term_order=True, num_blocks_open=5).value],
+)
+```
+----------------------------------------
+TITLE: Create a Market Order with Price Slippage Protection in Python
+DESCRIPTION: Demonstrates how to create a market order using the `order_factory` in Nautilus Trader, specifying a `market_order_price` for slippage protection and enabling hidden order functionality on dYdX. It also sets the `TimeInForce` to `IOC` and tags the order as short-term.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: python
+KEYWORDS: DYDXOrderTags,dYdX,integration,order management,order type:market,order:create,slippage protection,strategy
+CODE:
+```
+order = self.order_factory.market(
+    instrument_id=self.instrument_id,
+    order_side=OrderSide.BUY,
+    quantity=self.instrument.make_qty(self.trade_size),
+    time_in_force=TimeInForce.IOC,
+    tags=[DYDXOrderTags(is_short_term_order=True, market_order_price=Price.from_str("10_000")).value],
+)
+```
+----------------------------------------
+TITLE: Instantiate and Build Nautilus Trader Node with dYdX Client Factories
+DESCRIPTION: This snippet illustrates the process of creating a `TradingNode` instance and registering the `DYDXLiveDataClientFactory` and `DYDXLiveExecClientFactory`. This step is crucial for enabling the Nautilus Trader node to connect and interact with the dYdX platform for live trading.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: python
+KEYWORDS: TradingNode,client:factory,configuration,dev:build,development,dYdX,integration,live trading
+CODE:
+```
+from nautilus_trader.adapters.dydx import DYDXLiveDataClientFactory
+from nautilus_trader.adapters.dydx import DYDXLiveExecClientFactory
+from nautilus_trader.live.node import TradingNode
+
+# Instantiate the live trading node with a configuration
+node = TradingNode(config=config)
+
+# Register the client factories with the node
+node.add_data_client_factory("DYDX", DYDXLiveDataClientFactory)
+node.add_exec_client_factory("DYDX", DYDXLiveExecClientFactory)
+
+# Finally build the node
+node.build()
+```
+----------------------------------------
+TITLE: dYdX Supported Order Types for Perpetuals
+DESCRIPTION: Lists the order types supported by dYdX for perpetual futures trading, including `MARKET`, `LIMIT`, `STOP_MARKET`, and `STOP_LIMIT`, along with notes on their specific requirements or limitations.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: APIDOC
+KEYWORDS: dYdX,documentation:API-reference,integration,order types,perpetuals,supported features
+CODE:
+```
+Order Types:
+  MARKET:
+    Perpetuals: ✓
+    Notes: Requires price for slippage protection.
+  LIMIT:
+    Perpetuals: ✓
+    Notes:
+  STOP_MARKET:
+    Perpetuals: ✓
+    Notes: Long-term orders only.
+  STOP_LIMIT:
+    Perpetuals: ✓
+    Notes: Long-term orders only.
+  MARKET_IF_TOUCHED:
+    Perpetuals: -
+    Notes: Not supported.
+  LIMIT_IF_TOUCHED:
+    Perpetuals: -
+    Notes: Not supported.
+  TRAILING_STOP_MARKET:
+    Perpetuals: -
+    Notes: Not supported.
+```
+----------------------------------------
+TITLE: Install NautilusTrader with dYdX Support via pip
+DESCRIPTION: Installs or upgrades the NautilusTrader library with the necessary dYdX integration components using pip, enabling support for dYdX functionalities.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: bash
+KEYWORDS: dev:extras,dev:installation,dev:package-management,development,dYdX,integration
+CODE:
+```
+pip install --upgrade "nautilus_trader[dydx]"
+```
+----------------------------------------
+TITLE: dYdX Supported Execution Instructions for Perpetuals
+DESCRIPTION: Details the execution instructions available on dYdX for perpetual futures, specifically `post_only` and `reduce_only`, noting their applicability to all order types.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: APIDOC
+KEYWORDS: dYdX,documentation:API-reference,execution instructions,integration,perpetuals,post_only,reduce_only
+CODE:
+```
+Execution Instructions:
+  post_only:
+    Perpetuals: ✓
+    Notes: Supported on all order types.
+  reduce_only:
+    Perpetuals: ✓
+    Notes: Supported on all order types.
+```
+----------------------------------------
+TITLE: Configure Nautilus Trader for dYdX Testnet Connection
+DESCRIPTION: This snippet demonstrates how to modify the `TradingNodeConfig` to connect to the dYdX testnet. By setting the `is_testnet` option to `True` for both data and execution clients, users can simulate trading activities without using real funds.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: python
+KEYWORDS: TradingNodeConfig,configuration,dYdX,integration,live trading,mnemonic,testnet,wallet
+CODE:
+```
+config = TradingNodeConfig(
+    ...,  # Omitted
+    data_clients={
+        "DYDX": {
+            "wallet_address": "YOUR_DYDX_WALLET_ADDRESS",
+            "is_testnet": True,
+        },
+    },
+    exec_clients={
+        "DYDX": {
+            "wallet_address": "YOUR_DYDX_WALLET_ADDRESS",
+            "subaccount": "YOUR_DYDX_SUBACCOUNT_NUMBER"
+            "mnemonic": "YOUR_MNEMONIC",
+            "is_testnet": True,
+        },
+    },
+)
+```
+----------------------------------------
+TITLE: dYdX Supported Time-in-Force Options for Perpetuals
+DESCRIPTION: Outlines the Time-in-Force options supported by dYdX for perpetual futures, including `GTC`, `GTD`, `FOK`, and `IOC`, with their full names.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: APIDOC
+KEYWORDS: FOK,GTC,GTD,IOC,TimeInForce,dYdX,documentation:API-reference,integration,perpetuals
+CODE:
+```
+Time-in-Force Options:
+  GTC:
+    Perpetuals: ✓
+    Notes: Good Till Canceled.
+  GTD:
+    Perpetuals: ✓
+    Notes: Good Till Date.
+  FOK:
+    Perpetuals: ✓
+    Notes: Fill or Kill.
+  IOC:
+    Perpetuals: ✓
+    Notes: Immediate or Cancel.
+```
+----------------------------------------
+TITLE: dYdX Advanced Order Features for Perpetuals
+DESCRIPTION: Summarizes advanced order features supported or not supported by dYdX for perpetual futures, such as Order Modification (cancel-replace for short-term orders), Bracket/OCO Orders, and Iceberg Orders.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: APIDOC
+KEYWORDS: dYdX,documentation:API-reference,feature:advanced-orders,integration,perpetuals
+CODE:
+```
+Advanced Order Features:
+  Order Modification:
+    Perpetuals: ✓
+    Notes: Short-term orders only; cancel-replace method.
+  Bracket/OCO Orders:
+    Perpetuals: -
+    Notes: Not supported.
+  Iceberg Orders:
+    Perpetuals: -
+    Notes: Not supported.
+```
+----------------------------------------
+TITLE: Build NautilusTrader from Source with dYdX Extras
+DESCRIPTION: Builds NautilusTrader from its source code, including all extra dependencies such as dYdX, using the uv tool. This is for developers building from source.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: bash
+KEYWORDS: dev:build,dev:extras,dev:installation,dev:package-management,dev:source-build,development,dYdX,integration
+CODE:
+```
+uv sync --all-extras
+```
+----------------------------------------
+TITLE: dYdX Order Classification: Short-term vs. Long-term
+DESCRIPTION: Explains dYdX's classification of orders into short-term and long-term, detailing their default usage and requirements for conditional orders.
+SOURCE: docs/integrations/dydx.md
+LANGUAGE: APIDOC
+KEYWORDS: dYdX,documentation:API-reference,integration,order type:conditional,order type:long-term,order type:short-term,order types
+CODE:
+```
+Order Classification:
+  Short-term orders:
+    Description: Default for all orders; intended for high-frequency trading and market orders.
+  Long-term orders:
+    Description: Required for conditional orders; use DYDXOrderTags to specify.
+```

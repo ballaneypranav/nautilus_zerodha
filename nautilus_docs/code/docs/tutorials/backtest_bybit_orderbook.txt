@@ -1,0 +1,289 @@
+TITLE: Running Nautilus Trader Backtest in Python
+DESCRIPTION: This snippet creates a `BacktestNode` instance, passing the previously defined `config` object. It then executes the backtest by calling the `run()` method on the node, storing the comprehensive outcome of the backtest in the `result` variable.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: Python
+KEYWORDS: BacktestNode,backtesting,configuration,run
+CODE:
+```
+node = BacktestNode(configs=[config])
+
+result = node.run()
+```
+----------------------------------------
+TITLE: Configuring NautilusTrader Backtest Node (Python)
+DESCRIPTION: This snippet configures the essential components for a NautilusTrader backtest. It defines `BacktestDataConfig` to specify the data source (catalog path, data class, instrument ID), `BacktestVenueConfig` for venue details (name, OMS type, account type, starting balances, book type), and `ImportableStrategyConfig` to load the `OrderBookImbalance` strategy with its specific parameters. This comprehensive configuration prepares the backtest engine for execution.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestDataConfig,BacktestVenueConfig,Bybit,ImportableStrategyConfig,L2,OrderBookImbalance,ParquetDataCatalog,backtesting,configuration,data catalog,integration
+CODE:
+```
+instrument = catalog.instruments()[0]
+book_type = "L2_MBP"  # Ensure data book type matches venue book type
+
+data_configs = [BacktestDataConfig(
+        catalog_path=CATALOG_PATH,
+        data_cls=OrderBookDelta,
+        instrument_id=instrument.id,
+        # start_time=start,  # Run across all data
+        # end_time=end,  # Run across all data
+    )
+]
+
+venues_configs = [
+    BacktestVenueConfig(
+        name="BYBIT",
+        oms_type="NETTING",
+        account_type="CASH",
+        base_currency=None,
+        starting_balances=["200000 XRP", "100000 USDT"],
+        book_type=book_type  # <-- Venues book type
+    )
+]
+
+strategies = [
+    ImportableStrategyConfig(
+        strategy_path="nautilus_trader.examples.strategies.orderbook_imbalance:OrderBookImbalance",
+        config_path="nautilus_trader.examples.strategies.orderbook_imbalance:OrderBookImbalanceConfig",
+        config={
+            "instrument_id": instrument.id,
+            "book_type": book_type,
+            "max_trade_size": Decimal("1.000"),
+            "min_seconds_between_triggers": 1.0
+        }
+    )
+]
+
+# NautilusTrader currently exceeds the rate limit for Jupyter notebook logging (stdout output),
+# this is why the `log_level` is set to "ERROR". If you lower this level to see
+# more logging then the notebook will hang during cell execution. A fix is currently
+# being investigated which involves either raising the configured rate limits for
+```
+----------------------------------------
+TITLE: Generating Positions Report in Nautilus Trader (Python)
+DESCRIPTION: This snippet utilizes the `engine.trader` object to generate a comprehensive report detailing all positions held and managed throughout the backtest. This report provides a snapshot of the portfolio's state at various points.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: Python
+KEYWORDS: backtesting,position,reporting & analysis
+CODE:
+```
+engine.trader.generate_positions_report()
+```
+----------------------------------------
+TITLE: Configuring Nautilus Trader Backtest Run in Python
+DESCRIPTION: This snippet initializes a `BacktestRunConfig` object, defining the engine's strategies, logging level (set to ERROR), data configurations, and venue configurations for a Nautilus Trader backtest. It sets up the fundamental parameters before the backtest execution.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: Python
+KEYWORDS: BacktestEngineConfig,BacktestRunConfig,backtesting,configuration,data handling,logging,venue
+CODE:
+```
+config = BacktestRunConfig(
+    engine=BacktestEngineConfig(
+        strategies=strategies,
+        logging=LoggingConfig(log_level="ERROR"),
+    ),
+    data=data_configs,
+    venues=venues_configs,
+)
+```
+----------------------------------------
+TITLE: Configuring Nautilus Trader Backtest Run in Python
+DESCRIPTION: This snippet initializes a `BacktestRunConfig` object, defining the engine's strategies, logging level (set to ERROR), data configurations, and venue configurations for a Nautilus Trader backtest. It sets up the fundamental parameters before the backtest execution.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: Python
+KEYWORDS: BacktestEngineConfig,BacktestRunConfig,Bybit,backtesting,configuration,data handling,integration,logging,venue
+CODE:
+```
+config = BacktestRunConfig(
+    engine=BacktestEngineConfig(
+        strategies=strategies,
+        logging=LoggingConfig(log_level="ERROR"),
+    ),
+    data=data_configs,
+    venues=venues_configs,
+)
+```
+----------------------------------------
+TITLE: Loading Raw Bybit Order Book Delta Data (Python)
+DESCRIPTION: This snippet loads raw order book depth 500 data for XRPUSDT from a specified Bybit data file using `BybitOrderBookDeltaDataLoader`. It limits the number of rows loaded to 1,000,000 for efficiency. The loaded data is then displayed using `df_raw.head()` to show its initial structure.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Bybit,BybitOrderBookDeltaDataLoader,data handling,data type:order-book-delta,data:loading,integration
+CODE:
+```
+# We'll use orderbook depth 500 data provided by Bybit with limit of 1000000 rows
+path_update = data_path / "2024-12-01_XRPUSDT_ob500.data.zip"
+nrows = 1_000_000
+df_raw = BybitOrderBookDeltaDataLoader.load(path_update, nrows=nrows)
+df_raw.head()
+```
+----------------------------------------
+TITLE: Processing Order Book Deltas with Wrangler (Python)
+DESCRIPTION: This snippet initializes an `OrderBookDeltaDataWrangler` for the XRPUSDT instrument on Bybit. It then processes the raw DataFrame (`df_raw`) into a list of `OrderBookDelta` objects. The deltas are sorted by their initialization timestamp (`ts_init`) to ensure chronological order, which is critical for backtesting. The first 10 processed deltas are displayed.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Bybit,OrderBookDeltaDataWrangler,TestInstrumentProvider,data handling,data type:order-book-delta,data:wrangling,integration
+CODE:
+```
+XRPUSDT_BYBIT = TestInstrumentProvider.xrpusdt_linear_bybit()
+wrangler = OrderBookDeltaDataWrangler(XRPUSDT_BYBIT)
+
+deltas = wrangler.process(df_raw)
+deltas.sort(key=lambda x: x.ts_init)  # Ensure data is non-decreasing by `ts_init`
+deltas[:10]
+```
+----------------------------------------
+TITLE: Displaying Backtest Results in Python
+DESCRIPTION: This snippet displays the `result` object obtained from running the backtest. In an interactive environment, this allows for immediate inspection of the backtest's output, summary statistics, and any generated reports or metrics.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: Python
+KEYWORDS: backtesting,display,reporting & analysis,results
+CODE:
+```
+result
+```
+----------------------------------------
+TITLE: Setting Up Parquet Data Catalog (Python)
+DESCRIPTION: This snippet defines the path for the data catalog and ensures a clean slate by removing any existing catalog directory before creating a new one. It then instantiates a `ParquetDataCatalog` at the specified path. This catalog will be used to store and manage processed instrument and tick data for backtesting.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: ParquetDataCatalog,data catalog,data:persistence,directory management,initialization
+CODE:
+```
+CATALOG_PATH = os.getcwd() + "/catalog"
+
+# Clear if it already exists, then create fresh
+if os.path.exists(CATALOG_PATH):
+    shutil.rmtree(CATALOG_PATH)
+os.mkdir(CATALOG_PATH)
+
+# Create a catalog instance
+catalog = ParquetDataCatalog(CATALOG_PATH)
+```
+----------------------------------------
+TITLE: Generating Order Fills Report in Nautilus Trader (Python)
+DESCRIPTION: This snippet imports necessary classes (`BacktestEngine`, `Venue`), retrieves the `BacktestEngine` instance using the configuration ID, and then generates a detailed report of all order fills processed during the backtest, providing insights into execution quality.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: Python
+KEYWORDS: BacktestEngine,backtesting,execution,order fills,reporting & analysis
+CODE:
+```
+from nautilus_trader.backtest.engine import BacktestEngine
+from nautilus_trader.model import Venue
+
+
+engine: BacktestEngine = node.get_engine(config.id)
+
+engine.trader.generate_order_fills_report()
+```
+----------------------------------------
+TITLE: Importing NautilusTrader and Data Loading Modules (Python)
+DESCRIPTION: This snippet imports all necessary modules and classes for the backtesting tutorial. It includes components for file system operations, decimal arithmetic, data manipulation with Pandas, Bybit data loading, NautilusTrader backtesting node configuration, core utilities, model definitions, data persistence, and testing utilities. These imports are foundational for subsequent data handling and backtest setup.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestNode,Bybit,OrderBookDelta,ParquetDataCatalog,backtesting,configuration,data catalog,data type:order-book-delta,dev:imports,development,integration
+CODE:
+```
+import os
+import shutil
+from decimal import Decimal
+from pathlib import Path
+
+import pandas as pd
+
+from nautilus_trader.adapters.bybit.loaders import BybitOrderBookDeltaDataLoader
+from nautilus_trader.backtest.node import BacktestDataConfig
+from nautilus_trader.backtest.node import BacktestEngineConfig
+from nautilus_trader.backtest.node import BacktestNode
+from nautilus_trader.backtest.node import BacktestRunConfig
+from nautilus_trader.backtest.node import BacktestVenueConfig
+from nautilus_trader.config import ImportableStrategyConfig
+from nautilus_trader.config import LoggingConfig
+from nautilus_trader.core.datetime import dt_to_unix_nanos
+from nautilus_trader.model import OrderBookDelta
+from nautilus_trader.persistence.catalog import ParquetDataCatalog
+from nautilus_trader.persistence.wranglers import OrderBookDeltaDataWrangler
+from nautilus_trader.test_kit.providers import TestInstrumentProvider
+```
+----------------------------------------
+TITLE: Exploring Order Book Deltas in Catalog (Python)
+DESCRIPTION: This snippet demonstrates how to query and retrieve order book deltas from the `ParquetDataCatalog` within a specified time range. It converts human-readable timestamps to Unix nanoseconds for the query. The length of the retrieved deltas is printed, and the first 10 deltas are displayed, confirming data accessibility and integrity within the catalog.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Bybit,OrderBookDelta,data catalog,data type:order-book-delta,inspection,integration,query,time range
+CODE:
+```
+# Explore the available data in the catalog
+start = dt_to_unix_nanos(pd.Timestamp("2022-11-01", tz="UTC"))
+end =  dt_to_unix_nanos(pd.Timestamp("2022-11-04", tz="UTC"))
+
+deltas = catalog.order_book_deltas(start=start, end=end)
+print(len(deltas))
+deltas[:10]
+```
+----------------------------------------
+TITLE: Confirming Instrument in Data Catalog (Python)
+DESCRIPTION: This snippet retrieves and displays the list of instruments stored in the `ParquetDataCatalog`. This acts as a verification step to confirm that the `XRPUSDT_BYBIT` instrument was successfully written to the catalog in the previous step, ensuring it's available for backtesting.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: data catalog,dev:verification,development,instrument,query
+CODE:
+```
+# Confirm the instrument was written
+catalog.instruments()
+```
+----------------------------------------
+TITLE: Writing Instrument and Deltas to Catalog (Python)
+DESCRIPTION: This snippet writes the processed instrument data (`XRPUSDT_BYBIT`) and the list of sorted order book deltas (`deltas`) into the previously set up `ParquetDataCatalog`. This step persists the prepared data, making it available for efficient retrieval during the backtest simulation.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Bybit,ParquetDataCatalog,data catalog,data handling,data type:delta,data:persistence,instrument,integration
+CODE:
+```
+# Write instrument and ticks to catalog
+catalog.write_data([XRPUSDT_BYBIT])
+catalog.write_data(deltas)
+```
+----------------------------------------
+TITLE: Generating Account Report for Specific Venue in Nautilus Trader (Python)
+DESCRIPTION: This snippet generates an account report specifically for the 'BYBIT' trading venue. It provides a summary of account activity, balances, and performance metrics pertinent to that particular venue during the backtest period.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: Python
+KEYWORDS: Bybit,account,backtesting,integration,reporting & analysis,venue
+CODE:
+```
+engine.trader.generate_account_report(Venue("BYBIT"))
+```
+----------------------------------------
+TITLE: Defining Data Directory Path (Python)
+DESCRIPTION: This snippet defines the base directory where historical data files are expected to be located. It uses a placeholder path, `~/Downloads`, which should be adjusted by the user to point to their actual data storage location. This path is crucial for subsequent data loading operations.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Bybit,configuration,data handling,directory path,integration
+CODE:
+```
+# Path to your data directory, using user /Downloads as an example
+DATA_DIR = "~/Downloads"
+```
+----------------------------------------
+TITLE: Displaying Backtest Configuration in Python
+DESCRIPTION: This snippet simply displays the `config` object, likely in an interactive environment like Jupyter, to review the defined backtest parameters and ensure they are correctly set before proceeding with the backtest execution.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: Python
+KEYWORDS: backtesting,configuration,display,inspection
+CODE:
+```
+config
+```
+----------------------------------------
+TITLE: Discovering Raw Bybit Data Files (Python)
+DESCRIPTION: This snippet constructs the full path to the Bybit data directory and then lists all files within it. It includes an assertion to ensure that raw historical data files are found, preventing further execution if the directory is empty. This step confirms the presence of data before attempting to load it.
+SOURCE: docs/tutorials/backtest_bybit_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Bybit,assertion,data handling,dev:verification,development,file system,integration
+CODE:
+```
+data_path = Path(DATA_DIR).expanduser() / "Data" / "Bybit"
+raw_files = list(data_path.iterdir())
+assert raw_files, f"Unable to find any histdata files in directory {data_path}"
+raw_files
+```

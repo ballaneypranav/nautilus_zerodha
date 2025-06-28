@@ -1,0 +1,196 @@
+TITLE: Configuring and Adding an EMA Cross TWAP Strategy - Python
+DESCRIPTION: This code configures an `EMACrossTWAPConfig` object with specific parameters for an EMA cross strategy, including instrument ID, bar type, trade size, EMA periods, and TWAP execution parameters. It then instantiates an `EMACrossTWAP` strategy using this configuration and adds it to the `engine`, enabling the strategy to participate in the backtest. Multiple strategies can be added, limited by machine resources.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: EMACrossTWAPConfig,add_strategy,algorithm:TWAP,backtesting,configuration,strategy,strategy:EMA-cross
+CODE:
+```
+# Configure your strategy
+strategy_config = EMACrossTWAPConfig(
+    instrument_id=ETHUSDT_BINANCE.id,
+    bar_type=BarType.from_str("ETHUSDT.BINANCE-250-TICK-LAST-INTERNAL"),
+    trade_size=Decimal("0.10"),
+    fast_ema_period=10,
+    slow_ema_period=20,
+    twap_horizon_secs=10.0,
+    twap_interval_secs=2.5,
+)
+
+# Instantiate and add your strategy
+strategy = EMACrossTWAP(config=strategy_config)
+engine.add_strategy(strategy=strategy)
+```
+----------------------------------------
+TITLE: Resetting NautilusTrader Engine for Repeated Runs - Python
+DESCRIPTION: This command resets the NautilusTrader engine, clearing all stateful values from a previous backtest run while retaining loaded data and components. This is useful for performing multiple backtests with different strategy or component configurations without the overhead of reloading data.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,engine,reset,state management
+CODE:
+```
+# For repeated backtest runs make sure to reset the engine
+engine.reset()
+```
+----------------------------------------
+TITLE: Initializing Backtest Engine with Custom Configuration (Python)
+DESCRIPTION: This snippet demonstrates how to configure and instantiate a `BacktestEngine`. It uses `BacktestEngineConfig` to set a custom `trader_id`, showcasing the general configuration pattern for the engine. The `BacktestEngine` is the core component for running simulations.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestEngine,BacktestEngineConfig,backtesting,configuration,customization,dev:build,development
+CODE:
+```
+# Configure backtest engine
+config = BacktestEngineConfig(trader_id=TraderId("BACKTESTER-001"))
+
+# Build the backtest engine
+engine = BacktestEngine(config=config)
+```
+----------------------------------------
+TITLE: Running the NautilusTrader Backtest - Python
+DESCRIPTION: This line of code initiates the backtest process within the NautilusTrader engine. By default, the `run()` method will execute the backtest over all available loaded data, simulating trading activity based on the configured strategies and execution algorithms.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,engine,run
+CODE:
+```
+# Run the engine (from start to end of data)
+engine.run()
+```
+----------------------------------------
+TITLE: Adding Data to NautilusTrader Engine - Python
+DESCRIPTION: This snippet demonstrates how to add historical data, represented by `ticks`, to the NautilusTrader engine. This is a foundational step for any backtesting or live trading simulation, providing the necessary market information for the system to operate. The amount and variety of data types are flexible, limited only by machine resources.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,data handling,data:add,engine
+CODE:
+```
+engine.add_data(ticks)
+```
+----------------------------------------
+TITLE: Adding Instrument and Trade Tick Data to Backtest Engine (Python)
+DESCRIPTION: This snippet adds the previously initialized `ETHUSDT_BINANCE` instrument and the wrangled `TradeTick` objects to the `BacktestEngine`. This step provides the engine with the necessary market data and instrument definitions to perform the backtest simulation.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,data handling,data:add,engine,instrument
+CODE:
+```
+# Add instrument(s)
+engine.add_instrument(ETHUSDT_BINANCE)
+```
+----------------------------------------
+TITLE: Adding a Simulated Trading Venue (Python)
+DESCRIPTION: This code adds a simulated Binance trading venue to the `BacktestEngine`. It configures the venue with `OmsType.NETTING` and `AccountType.CASH`, and sets initial balances for USDT and ETH, enabling the engine to simulate trades on this exchange.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,add_venue,backtesting,cash account,configuration,integration,venue,venue:simulated
+CODE:
+```
+# Add a trading venue (multiple venues possible)
+BINANCE = Venue("BINANCE")
+engine.add_venue(
+    venue=BINANCE,
+    oms_type=OmsType.NETTING,
+    account_type=AccountType.CASH,  # Spot CASH account (not for perpetuals or futures)
+    base_currency=None,  # Multi-currency account
+    starting_balances=[Money(1_000_000.0, USDT), Money(10.0, ETH)]
+)
+```
+----------------------------------------
+TITLE: Loading and Wrangling Trade Tick Data (Python)
+DESCRIPTION: This code loads stub trade tick data from a CSV file using `TestDataProvider`, initializes the `ETHUSDT_BINANCE` instrument, and then processes the raw DataFrame into a list of Nautilus `TradeTick` objects using `TradeTickDataWrangler`. This prepares the historical data for use in the backtest engine.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,TestInstrumentProvider,TradeTick,TradeTickDataWrangler,data handling,data type:tick,data:wrangling,integration,library:pandas
+CODE:
+```
+# Load stub test data
+provider = TestDataProvider()
+trades_df = provider.read_csv_ticks("binance/ethusdt-trades.csv")
+
+# Initialize the instrument which matches the data
+ETHUSDT_BINANCE = TestInstrumentProvider.ethusdt_binance()
+
+# Process into Nautilus objects
+wrangler = TradeTickDataWrangler(instrument=ETHUSDT_BINANCE)
+ticks = wrangler.process(trades_df)
+```
+----------------------------------------
+TITLE: Adding a TWAP Execution Algorithm - Python
+DESCRIPTION: This snippet instantiates a `TWAPExecAlgorithm` using its default parameters and then adds it to the NautilusTrader engine. This component is responsible for executing orders according to the TWAP (Time-Weighted Average Price) logic, allowing for flexible order submission and management within the trading system. Multiple execution algorithms can be used, limited by machine resources.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: TWAPExecAlgorithm,add_exec_algorithm,algorithm:TWAP,backtesting
+CODE:
+```
+# Instantiate and add your execution algorithm
+exec_algorithm = TWAPExecAlgorithm()  # Using defaults
+engine.add_exec_algorithm(exec_algorithm)
+```
+----------------------------------------
+TITLE: Generating Order Fills Report - Python
+DESCRIPTION: This code generates a report detailing all order fills that occurred during the backtest. This report is crucial for understanding the execution quality and specifics of each trade, including fill prices, quantities, and timestamps, which helps in granular performance analysis.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,execution,order fills,reporting & analysis
+CODE:
+```
+engine.trader.generate_order_fills_report()
+```
+----------------------------------------
+TITLE: Generating Positions Report - Python
+DESCRIPTION: This snippet generates a report summarizing all positions held throughout the backtest. This report provides insights into the open and closed positions, their entry and exit points, and overall profitability, essential for evaluating the strategy's position management.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,position,reporting & analysis
+CODE:
+```
+engine.trader.generate_positions_report()
+```
+----------------------------------------
+TITLE: Generating Account Report for Binance - Python
+DESCRIPTION: After a backtest completes, this snippet generates an account report specific to the `BINANCE` venue. This report provides a summary of the trading account's performance, including metrics like profit/loss, equity, and other relevant financial statistics, aiding in post-run analysis.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,account,backtesting,integration,reporting & analysis,venue
+CODE:
+```
+engine.trader.generate_account_report(BINANCE)
+```
+----------------------------------------
+TITLE: Disposing NautilusTrader Engine Object - Python
+DESCRIPTION: This snippet calls the `dispose()` method on the `engine` object. It is considered good practice to dispose of the engine object when it is no longer needed, especially if the script continues, to release resources and ensure proper cleanup.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,dispose,engine,resource management
+CODE:
+```
+# Once done, good practice to dispose of the object if the script continues
+engine.dispose()
+```
+----------------------------------------
+TITLE: Importing NautilusTrader Modules (Python)
+DESCRIPTION: This snippet imports necessary modules and classes from the NautilusTrader library and Python's `decimal` module. These imports are foundational for configuring the backtest engine, defining strategies, execution algorithms, and handling data models like currencies and instruments.
+SOURCE: docs/getting_started/backtest_low_level.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestEngine,EMACrossTWAP,TWAP,backtesting,configuration,dev:imports,development
+CODE:
+```
+from decimal import Decimal
+
+from nautilus_trader.backtest.engine import BacktestEngine
+from nautilus_trader.backtest.engine import BacktestEngineConfig
+from nautilus_trader.examples.algorithms.twap import TWAPExecAlgorithm
+from nautilus_trader.examples.strategies.ema_cross_twap import EMACrossTWAP
+from nautilus_trader.examples.strategies.ema_cross_twap import EMACrossTWAPConfig
+from nautilus_trader.model import BarType
+from nautilus_trader.model import Money
+from nautilus_trader.model import TraderId
+from nautilus_trader.model import Venue
+from nautilus_trader.model.currencies import ETH
+from nautilus_trader.model.currencies import USDT
+from nautilus_trader.model.enums import AccountType
+from nautilus_trader.model.enums import OmsType
+from nautilus_trader.persistence.wranglers import TradeTickDataWrangler
+from nautilus_trader.test_kit.providers import TestDataProvider
+from nautilus_trader.test_kit.providers import TestInstrumentProvider
+```

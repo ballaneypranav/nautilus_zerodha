@@ -1,0 +1,250 @@
+TITLE: Processing Pandas DataFrame into NautilusTrader QuoteTick Objects (Python)
+DESCRIPTION: This code block initializes a QuoteTickDataWrangler for the EUR/USD instrument using a test instrument provider. It then processes the previously loaded pandas DataFrame (df) into a list of NautilusTrader QuoteTick objects, which is the native data format for the platform. The snippet concludes by displaying the first two generated QuoteTick objects as a preview.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: Python
+KEYWORDS: FX,QuoteTick,QuoteTickDataWrangler,TestInstrumentProvider,data handling,data type:tick,data:wrangling,instrument,library:pandas
+CODE:
+```
+# Process quotes using a wrangler
+EURUSD = TestInstrumentProvider.default_fx_ccy("EUR/USD")
+wrangler = QuoteTickDataWrangler(EURUSD)
+
+ticks = wrangler.process(df)
+
+# Preview: see first 2 ticks
+ticks[0:2]
+```
+----------------------------------------
+TITLE: Assembling Backtest Run Configuration - Python
+DESCRIPTION: Creates a `BacktestRunConfig` object, consolidating all previously defined configurations for the backtest. This includes the engine configuration (with strategies), data sources, and trading venues, providing a single object to define the entire backtest setup.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestRunConfig,backtesting,configuration,data handling,engine,strategy,venue
+CODE:
+```
+config = BacktestRunConfig(
+    engine=BacktestEngineConfig(strategies=strategies),
+    data=data_configs,
+    venues=venue_configs,
+)
+```
+----------------------------------------
+TITLE: Loading Raw CSV Tick Data into Pandas DataFrame (Python)
+DESCRIPTION: This snippet loads the first raw CSV file from the specified directory into a pandas DataFrame. It configures the loading process by defining the index column, specifying column names, selecting relevant columns, and parsing the timestamp column with a defined format. The DataFrame is then sorted by timestamp to ensure chronological order, and the first two rows are previewed.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: Python
+KEYWORDS: CSV,CSVTickDataLoader,data format,data handling,data type:tick,data:loading,library:pandas
+CODE:
+```
+# Here we just take the first data file found and load into a pandas DataFrame
+df = CSVTickDataLoader.load(
+    file_path=raw_files[0],                                   # Input 1st CSV file
+    index_col=0,                                              # Use 1st column in data as index for dataframe
+    header=None,                                              # There are no column names in CSV files
+    names=["timestamp", "bid_price", "ask_price", "volume"],  # Specify names to individual columns
+    usecols=["timestamp", "bid_price", "ask_price"],          # Read only these columns from CSV file into dataframe
+    parse_dates=["timestamp"],                                # Specify columns containing date/time
+    date_format="%Y%m%d %H%M%S%f"                            # Format for parsing datetime
+)
+
+# Let's make sure data are sorted by timestamp
+df = df.sort_index()
+
+# Preview of loaded dataframe
+df.head(2)
+```
+----------------------------------------
+TITLE: Executing Backtest and Retrieving Results - Python
+DESCRIPTION: Initializes a `BacktestNode` with the assembled `BacktestRunConfig` and executes the backtest simulation. The `node.run()` method performs the backtest, and the results object contains the outcome of the simulation, which can then be analyzed.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestNode,backtesting,reporting & analysis,results,run
+CODE:
+```
+node = BacktestNode(configs=[config])
+
+results = node.run()
+results
+```
+----------------------------------------
+TITLE: Querying Quote Ticks from Data Catalog - Python
+DESCRIPTION: Queries quote ticks from the data catalog for a specified instrument and time range. It uses `dt_to_unix_nanos` to convert pandas Timestamps to nanosecond Unix timestamps, essential for precise time-based data retrieval.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: QuoteTick,data catalog,data type:tick,query,time range
+CODE:
+```
+start = dt_to_unix_nanos(pd.Timestamp("2024-10-01", tz="UTC"))
+end =  dt_to_unix_nanos(pd.Timestamp("2024-10-15", tz="UTC"))
+selected_quote_ticks = catalog.quote_ticks(instrument_ids=[EURUSD.id.value], start=start, end=end)
+
+selected_quote_ticks[:2]
+```
+----------------------------------------
+TITLE: Configuring Backtest Strategies - Python
+DESCRIPTION: Defines a list of `ImportableStrategyConfig` objects, specifying the trading strategies to be used in the backtest. This includes the strategy's import path, its configuration class path, and a dictionary of specific parameters for the strategy, such as instrument ID, bar type, EMA periods, and trade size.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: ImportableStrategyConfig,backtesting,configuration,strategy,strategy:EMA-cross
+CODE:
+```
+strategies = [
+    ImportableStrategyConfig(
+        strategy_path="nautilus_trader.examples.strategies.ema_cross:EMACross",
+        config_path="nautilus_trader.examples.strategies.ema_cross:EMACrossConfig",
+        config={
+            "instrument_id": instrument.id,
+            "bar_type": "EUR/USD.SIM-15-MINUTE-BID-INTERNAL",
+            "fast_ema_period": 10,
+            "slow_ema_period": 20,
+            "trade_size": Decimal(1_000_000),
+        },
+    ),
+]
+```
+----------------------------------------
+TITLE: Configuring Backtest Data Sources - Python
+DESCRIPTION: Creates a list of `BacktestDataConfig` objects, defining the data sources for a backtest. It specifies the catalog path, data class (e.g., `QuoteTick`), instrument ID, and the start/end times for the data to be used in the simulation.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestDataConfig,backtesting,configuration,data catalog,data handling,time range
+CODE:
+```
+data_configs = [
+    BacktestDataConfig(
+        catalog_path=str(CATALOG_PATH),
+        data_cls=QuoteTick,
+        instrument_id=instrument.id,
+        start_time=start,
+        end_time=end,
+    ),
+]
+```
+----------------------------------------
+TITLE: Initializing Data Catalog and Writing Data - Python
+DESCRIPTION: Initializes a `ParquetDataCatalog` instance using a specified path and demonstrates writing instrument and tick data to the catalog. This sets up the foundational data storage for further operations like backtesting or research.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: ParquetDataCatalog,data catalog,data handling,data type:tick,data:persistence,initialization,instrument
+CODE:
+```
+catalog = ParquetDataCatalog(CATALOG_PATH)
+
+catalog.write_data([EURUSD])
+
+catalog.write_data(ticks)
+```
+----------------------------------------
+TITLE: Initializing Parquet Data Catalog (Python)
+DESCRIPTION: This snippet defines the path for the Parquet data catalog, which will serve as the storage location for the processed historical data. It includes logic to remove any existing catalog at the specified path to ensure a clean start, then creates a new, empty directory. This step is essential for preparing the persistent storage for data used in the backtest.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: Python
+KEYWORDS: ParquetDataCatalog,data catalog,data:persistence,directory management,initialization
+CODE:
+```
+CATALOG_PATH = Path.cwd() / "catalog"
+
+# Clear if it already exists, then create fresh
+if CATALOG_PATH.exists():
+    shutil.rmtree(CATALOG_PATH)
+CATALOG_PATH.mkdir(parents=True)
+```
+----------------------------------------
+TITLE: Accessing a Specific Instrument from Data Catalog - Python
+DESCRIPTION: Accesses the first instrument from the list of instruments available in the data catalog. This snippet demonstrates how to select a specific instrument for subsequent operations, such as querying its associated data.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: data catalog,instrument,query
+CODE:
+```
+instrument = catalog.instruments()[0]
+instrument
+```
+----------------------------------------
+TITLE: Configuring Backtest Venues - Python
+DESCRIPTION: Defines a list of `BacktestVenueConfig` objects, specifying details for simulated trading venues. This configuration includes the venue name, order management system type, account type, base currency, and initial balances, crucial for simulating realistic trading environments.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestVenueConfig,backtesting,configuration,margin account,venue,venue:simulated
+CODE:
+```
+venue_configs = [
+    BacktestVenueConfig(
+        name="SIM",
+        oms_type="HEDGING",
+        account_type="MARGIN",
+        base_currency="USD",
+        starting_balances=["1_000_000 USD"],
+    ),
+]
+```
+----------------------------------------
+TITLE: Verifying Raw Data Files (Python)
+DESCRIPTION: This code block expands the DATA_DIR path to its absolute user-specific location and then lists all files within that directory. It includes an assertion to verify that at least one raw data file is found, ensuring that the necessary data is present before proceeding with data loading and processing. This step helps prevent errors due to missing input files.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: Python
+KEYWORDS: assertion,data handling,dev:verification,development,file system
+CODE:
+```
+path = Path(DATA_DIR).expanduser()
+raw_files = list(path.iterdir())
+assert raw_files, f"Unable to find any histdata files in directory {path}"
+raw_files
+```
+----------------------------------------
+TITLE: Retrieving All Instruments from Data Catalog - Python
+DESCRIPTION: Retrieves a list of all instruments currently stored within the `catalog` instance. This method is useful for inspecting the available instruments before performing data queries or analysis.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: data catalog,instrument,query
+CODE:
+```
+catalog.instruments()
+```
+----------------------------------------
+TITLE: Defining Raw Data Directory (Python)
+DESCRIPTION: This snippet defines the DATA_DIR variable, specifying the local file path where the downloaded historical FX data files are expected to be located. This path is crucial for the subsequent steps that involve loading and processing the raw CSV data for backtesting. Users must adjust this variable to match their specific data storage location.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: Python
+KEYWORDS: configuration,data handling,directory path
+CODE:
+```
+DATA_DIR = "~/Downloads/Data/"
+```
+----------------------------------------
+TITLE: Importing NautilusTrader and Utility Modules (Python)
+DESCRIPTION: This snippet imports all necessary modules from the NautilusTrader library for backtesting, data handling, and configuration, along with standard Python libraries like shutil, decimal, pathlib, and pandas. These imports are foundational for setting up and running the backtest, providing access to core functionalities and data structures.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: Python
+KEYWORDS: BacktestNode,ParquetDataCatalog,QuoteTick,backtesting,configuration,data catalog,data type:tick,dev:imports,development
+CODE:
+```
+import shutil
+from decimal import Decimal
+from pathlib import Path
+
+import pandas as pd
+
+from nautilus_trader.backtest.node import BacktestDataConfig
+from nautilus_trader.backtest.node import BacktestEngineConfig
+from nautilus_trader.backtest.node import BacktestNode
+from nautilus_trader.backtest.node import BacktestRunConfig
+from nautilus_trader.backtest.node import BacktestVenueConfig
+from nautilus_trader.config import ImportableStrategyConfig
+from nautilus_trader.core.datetime import dt_to_unix_nanos
+from nautilus_trader.model import QuoteTick
+from nautilus_trader.persistence.catalog import ParquetDataCatalog
+from nautilus_trader.persistence.wranglers import QuoteTickDataWrangler
+from nautilus_trader.test_kit.providers import CSVTickDataLoader
+from nautilus_trader.test_kit.providers import TestInstrumentProvider
+```
+----------------------------------------
+TITLE: Converting Catalog Path to String - Python
+DESCRIPTION: Converts the `CATALOG_PATH` object to its string representation. This is often necessary when a configuration expects a string path, even if the original path object might be a `pathlib.Path` or similar.
+SOURCE: docs/getting_started/backtest_high_level.ipynb
+LANGUAGE: python
+KEYWORDS: configuration,path,pathlib,string conversion
+CODE:
+```
+str(CATALOG_PATH)
+```

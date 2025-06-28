@@ -1,0 +1,198 @@
+TITLE: Initialize and Build Nautilus Trader Node with Coinbase International Clients
+DESCRIPTION: This Python example shows how to instantiate a `TradingNode` with a given configuration and register the Coinbase International live data and execution client factories. This setup is essential for connecting Nautilus Trader to Coinbase International for live trading operations.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: python
+KEYWORDS: Coinbase,TradingNode,client:factory,configuration,dev:build,development,integration,live trading
+CODE:
+```
+from nautilus_trader.adapters.coinbase_intx import COINBASE_INTX, CoinbaseIntxLiveDataClientFactory, CoinbaseIntxLiveExecClientFactory
+from nautilus_trader.live.node import TradingNode
+
+# Instantiate the live trading node with a configuration
+node = TradingNode(config=config)
+
+# Register the client factories with the node
+node.add_data_client_factory(COINBASE_INTX, CoinbaseIntxLiveDataClientFactory)
+node.add_exec_client_factory(COINBASE_INTX, CoinbaseIntxLiveExecClientFactory)
+
+# Finally build the node
+node.build()
+```
+----------------------------------------
+TITLE: Coinbase International Supported Time-in-Force Options
+DESCRIPTION: Outlines the time-in-force options supported by Coinbase International for orders, including `GTC`, `GTD`, `FOK`, and `IOC`, and their market applicability.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: APIDOC
+KEYWORDS: Coinbase,FOK,GTC,GTD,IOC,TimeInForce,documentation:API-reference,integration
+CODE:
+```
+Time-in-Force | Derivatives | Spot | Notes
+---------------|-------------|------|--------------------------------------------------
+`GTC`         | ✓           | ✓    | Good Till Canceled.
+`GTD`         | ✓           | ✓    | Good Till Date.
+`FOK`         | ✓           | ✓    | Fill or Kill.
+`IOC`         | ✓           | ✓    | Immediate or Cancel.
+```
+----------------------------------------
+TITLE: Coinbase International Supported Market Data Types
+DESCRIPTION: Lists the real-time market data types available from Coinbase International's WebSocket feed via the NautilusTrader adapter. These data types are streamed for real-time analysis and trading.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: APIDOC
+KEYWORDS: Bar,OrderBookDelta,QuoteTick,TradeTick,Coinbase,data type:market-data,data types,documentation:API-reference,integration
+CODE:
+```
+OrderBookDelta (L2 market-by-price)
+QuoteTick (L1 top-of-book best bid/ask)
+TradeTick
+Bar
+MarkPriceUpdate
+IndexPriceUpdate
+```
+----------------------------------------
+TITLE: Configure Nautilus Trader for Coinbase International with UUID Client Order IDs
+DESCRIPTION: This Python snippet demonstrates how to configure the `TradingNode` and a strategy (e.g., `TOBQuoterConfig`) to integrate with Coinbase International. It highlights the crucial `use_uuid_client_order_ids=True` setting required by Coinbase International's strict client order ID specification, ensuring successful order submission.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: python
+KEYWORDS: Coinbase,TOBQuoterConfig,UUID,client order ID,configuration,integration,live trading
+CODE:
+```
+from nautilus_trader.adapters.coinbase_intx import COINBASE_INTX, CoinbaseIntxDataClientConfig, CoinbaseIntxExecClientConfig
+from nautilus_trader.live.node import TradingNode
+
+config = TradingNodeConfig(
+    ...,  # Further config omitted
+    data_clients={
+        COINBASE_INTX: CoinbaseIntxDataClientConfig(
+            instrument_provider=InstrumentProviderConfig(load_all=True),
+        ),
+    },
+    exec_clients={
+        COINBASE_INTX: CoinbaseIntxExecClientConfig(
+            instrument_provider=InstrumentProviderConfig(load_all=True),
+        ),
+    },
+)
+
+strat_config = TOBQuoterConfig(
+    use_uuid_client_order_ids=True,  # <-- Necessary for Coinbase Intx
+    instrument_id=instrument_id,
+    external_order_claims=[instrument_id],
+    ...,  # Further config omitted
+)
+```
+----------------------------------------
+TITLE: Coinbase International Execution Client Configuration Options
+DESCRIPTION: Documents the available configuration options for the Coinbase International execution client, including `portfolio_id` and `http_timeout_secs`, along with their default values and descriptions.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: APIDOC
+KEYWORDS: Coinbase,client:execution,configuration,documentation:API-reference,integration,portfolio ID
+CODE:
+```
+Option                       | Default | Description
+------------------------------|---------|------------------------------------------------------
+`portfolio_id`               | `None`  | Specifies the Coinbase International portfolio to trade. Required for execution.
+`http_timeout_secs`          | `60`    | Default timeout for HTTP requests in seconds.
+```
+----------------------------------------
+TITLE: Coinbase International Supported Order Types
+DESCRIPTION: Details the order types available on Coinbase International for both Derivatives and Spot markets, including specific notes like time-in-force requirements for MARKET orders.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: APIDOC
+KEYWORDS: Coinbase,derivatives,documentation:API-reference,integration,order types,spot,supported features
+CODE:
+```
+Order Type             | Derivatives | Spot | Notes
+------------------------|-------------|------|-----------------------------------------
+`MARKET`               | ✓           | ✓    | Must use `IOC` or `FOK` time-in-forc
+`LIMIT`                | ✓           | ✓    |
+`STOP_MARKET`          | ✓           | ✓    |
+`STOP_LIMIT`           | ✓           | ✓    |
+`MARKET_IF_TOUCHED`    | -           | -    | *Not supported*.
+`LIMIT_IF_TOUCHED`     | -           | -    | *Not supported*.
+`TRAILING_STOP_MARKET` | -           | -    | *Not supported*.
+```
+----------------------------------------
+TITLE: Coinbase International Advanced Order Features
+DESCRIPTION: Summarizes advanced order features available on Coinbase International, such as order modification and iceberg orders, noting features requiring further investigation or specific protocols.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: APIDOC
+KEYWORDS: Coinbase,documentation:API-reference,feature:advanced-orders,integration,order modification
+CODE:
+```
+Feature            | Derivatives | Spot | Notes
+--------------------|-------------|------|-----------------------------------------
+Order Modification | ✓           | ✓    | Price and quantity modification.
+Bracket/OCO Orders | ?           | ?    | Requires further investigation.
+Iceberg Orders     | ✓           | ✓    | Available via FIX protocol.
+```
+----------------------------------------
+TITLE: Coinbase International Supported Execution Instructions
+DESCRIPTION: Lists the execution instructions available on Coinbase International, such as `post_only` and `reduce_only`, and their applicability to Derivatives and Spot markets.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: APIDOC
+KEYWORDS: Coinbase,documentation:API-reference,execution instructions,integration,post_only,reduce_only
+CODE:
+```
+Instruction   | Derivatives | Spot | Notes
+---------------|-------------|------|--------------------------------------------------
+`post_only`   | ✓           | ✓    | Ensures orders only provide liquidity.
+`reduce_only` | ✓           | ✓    | Ensures orders only reduce existing positions.
+```
+----------------------------------------
+TITLE: Coinbase International Supported Instrument Types
+DESCRIPTION: Lists the instrument types automatically loaded from the Coinbase International REST API and supported by the NautilusTrader adapter. This ensures clients have up-to-date definitions for parsing market data.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: APIDOC
+KEYWORDS: Coinbase,CryptoPerpetual,CurrencyPair,documentation:API-reference,instrument,integration,supported types
+CODE:
+```
+CurrencyPair (Spot cryptocurrencies)
+CryptoPerpetual
+```
+----------------------------------------
+TITLE: Execute Script to List Coinbase International Portfolios
+DESCRIPTION: Run this Python script to query the Coinbase International REST client and retrieve a list of all available portfolios, including their unique IDs and other relevant details.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: bash
+KEYWORDS: Coinbase,integration,list,portfolio,script
+CODE:
+```
+python nautilus_trader/adapters/coinbase_intx/scripts/list_portfolios.py
+```
+----------------------------------------
+TITLE: Example Output of Coinbase International Portfolio Listing
+DESCRIPTION: This JSON-like structure illustrates the typical output from the portfolio listing script, showing key details such as `portfolio_id`, `name`, and fee rates for a single portfolio.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: bash
+KEYWORDS: Coinbase,example output,integration,list,portfolio
+CODE:
+```
+[{'borrow_disabled': False,
+  'cross_collateral_enabled': False,
+  'is_default': False,
+  'is_lsp': False,
+  'maker_fee_rate': '-0.00008',
+  'name': 'hrp5587988499',
+  'portfolio_id': '3mnk59ap-1-22',  # Your portfolio ID
+  'portfolio_uuid': 'dd0958ad-0c9d-4445-a812-1870fe40d0e1',
+  'pre_launch_trading_enabled': False,
+  'taker_fee_rate': '0.00012',
+  'trading_lock': False,
+  'user_uuid': 'd4fbf7ea-9515-1068-8d60-4de91702c108'}]
+```
+----------------------------------------
+TITLE: NautilusTrader Coinbase International Adapter Components
+DESCRIPTION: Overview of the core components provided by the NautilusTrader adapter for connecting to Coinbase International's APIs for market data and execution. Most users will interact with these components indirectly via configuration.
+SOURCE: docs/integrations/coinbase_intx.md
+LANGUAGE: APIDOC
+KEYWORDS: Coinbase,HTTP client,InstrumentProvider,WebSocket,adapters,components,documentation:API-reference,integration
+CODE:
+```
+CoinbaseIntxHttpClient: REST API connectivity.
+CoinbaseIntxWebSocketClient: WebSocket API connectivity.
+CoinbaseIntxInstrumentProvider: Instrument parsing and loading functionality.
+CoinbaseIntxDataClient: A market data feed manager.
+CoinbaseIntxExecutionClient: An account management and trade execution gateway.
+CoinbaseIntxLiveDataClientFactory: Factory for Coinbase International data clients.
+CoinbaseIntxLiveExecClientFactory: Factory for Coinbase International execution clients.
+```

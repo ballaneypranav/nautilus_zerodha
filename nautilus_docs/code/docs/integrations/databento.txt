@@ -1,0 +1,276 @@
+TITLE: Load Databento DBN Data into Nautilus BacktestEngine
+DESCRIPTION: This snippet demonstrates how to load DBN files using `DatabentoDataLoader`, decode them into Nautilus objects, and then add the converted trade data to a `BacktestEngine` for backtesting. It also shows how to add a test instrument.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: Python
+KEYWORDS: BacktestEngine,DBN,Databento,TestInstrumentProvider,TSLA,data format,data handling,data:add,data:loading,integration
+CODE:
+```
+# Add instrument
+TSLA_NASDAQ = TestInstrumentProvider.equity(symbol="TSLA")
+engine.add_instrument(TSLA_NASDAQ)
+
+# Decode data to legacy Cython objects
+loader = DatabentoDataLoader()
+trades = loader.from_dbn_file(
+    path=TEST_DATA_DIR / "databento" / "temp" / "tsla-xnas-20240107-20240206.trades.dbn.zst",
+    instrument_id=TSLA_NASDAQ.id,
+)
+
+# Add data
+engine.add_data(trades)
+```
+----------------------------------------
+TITLE: Request Databento Statistics Schema for Historical Data
+DESCRIPTION: This example illustrates how to request historical data for the Databento `statistics` schema for a parent symbol (ES.FUT) and a specific date, utilizing the generic methods for custom data types in Nautilus Trader.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: Python
+KEYWORDS: Databento,data handling,data subscription,data type:custom,data type:historical,integration,statistics
+CODE:
+```
+from nautilus_trader.adapters.databento import DATABENTO_CLIENT_ID
+from nautilus_trader.adapters.databento import DatabentoStatistics
+from nautilus_trader.model import DataType
+
+instrument_id = InstrumentId.from_str("ES.FUT.GLBX")
+metadata = {
+    "instrument_id": instrument_id,
+    "start": "2024-03-06",
+}
+self.request_data(
+    data_type=DataType(DatabentoStatistics, metadata=metadata),
+    client_id=DATABENTO_CLIENT_ID,
+)
+```
+----------------------------------------
+TITLE: Mapping Databento Instrument IDs to NautilusTrader Symbology
+DESCRIPTION: Details how Databento's `instrument_id` and `raw_symbol` are mapped to NautilusTrader's `InstrumentId` format (`{symbol}.{venue}`). It also clarifies how Databento's `raw_symbol` becomes the Nautilus `symbol` and an ISO 10383 MIC from Databento's instrument definition becomes the Nautilus `venue`. Specific mappings for CME Globex MDP 3.0 are provided.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: APIDOC
+KEYWORDS: Databento,MIC,documentation:API-reference,instrument ID,integration,mapping,symbology,venue
+CODE:
+```
+Nautilus InstrumentId Format: "{symbol}.{venue}"
+- Nautilus symbol: Derived from Databento raw_symbol
+- Nautilus venue: Derived from ISO 10383 MIC from Databento instrument definition
+
+Databento Dataset Codes vs. Venue Identifiers:
+- Dataset code (e.g., GLBX.MDP3) is not a venue identifier.
+
+CME Globex MDP 3.0 (GLBX.MDP3) Venue Mappings (from instruments 'exchange' field):
+- CBCM: XCME-XCBT inter-exchange spread
+- NYUM: XNYM-DUMX inter-exchange spread
+- XCBT: Chicago Board of Trade (CBOT)
+- XCEC: Commodities Exchange Center (COMEX)
+- XCME: Chicago Mercantile Exchange (CME)
+- XFXS: CME FX Link spread
+- XNYM: New York Mercantile Exchange (NYMEX)
+
+Additional Venue MICs:
+- Can be found in the 'venue' field of responses from the metadata.list_publishers endpoint.
+```
+----------------------------------------
+TITLE: Mapping Databento Timestamps to NautilusTrader Conventions
+DESCRIPTION: Outlines the various timestamp fields present in Databento data and how they are mapped to NautilusTrader's required `ts_event` and `ts_init` fields. It highlights the general practice of assigning Databento's `ts_recv` to Nautilus's `ts_event` due to its reliability, with specific exceptions for adapter-defined data types.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: APIDOC
+KEYWORDS: Databento,documentation:API-reference,integration,mapping,symbology,timestamp
+CODE:
+```
+Databento Timestamp Fields (nanoseconds since UNIX epoch):
+- ts_event: Matching-engine-received timestamp.
+- ts_in_delta: Matching-engine-sending timestamp (nanoseconds before ts_recv).
+- ts_recv: Capture-server-received timestamp.
+- ts_out: Databento sending timestamp.
+
+NautilusTrader Timestamp Fields (nanoseconds since UNIX epoch):
+- ts_event: UNIX timestamp when the data event occurred.
+- ts_init: UNIX timestamp when the data object was initialized.
+
+Timestamp Mapping (Databento to Nautilus):
+- General Rule: Databento ts_recv -> Nautilus ts_event (for reliability and monotonicity).
+- Exceptions: DatabentoImbalance and DatabentoStatistics data types include all original Databento timestamps.
+```
+----------------------------------------
+TITLE: Mapping Databento Instrument Classes to NautilusTrader Types
+DESCRIPTION: Provides a mapping table detailing how various Databento instrument classes are decoded and assigned to their corresponding NautilusTrader `Instrument` types, covering stocks, futures, options, and spreads.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: APIDOC
+KEYWORDS: Databento,documentation:API-reference,equity,futures,instrument class,integration,mapping,options,symbology
+CODE:
+```
+Databento Instrument Class | Code | Nautilus Instrument Type
+---------------------------|------|-------------------------
+Stock                      | K    | Equity
+Future                     | F    | FuturesContract
+Call                       | C    | OptionContract
+Put                        | P    | OptionContract
+Future spread              | S    | FuturesSpread
+Option spread              | T    | OptionSpread
+Mixed spread               | M    | OptionSpread
+FX spot                    | X    | CurrencyPair
+Bond                       | B    | Not yet available
+```
+----------------------------------------
+TITLE: Load DBN Data and Write to ParquetDataCatalog
+DESCRIPTION: This snippet demonstrates how to load DBN data and write it to a ParquetDataCatalog. Setting 'as_legacy_cython=False' ensures DBN records are decoded as optimized pyo3 (Rust) objects for efficient writing.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: python
+KEYWORDS: DBN,ParquetDataCatalog,data catalog,data format,data handling,data:loading,data:persistence,integration:Databento,pyo3
+CODE:
+```
+# Initialize the catalog interface
+# (will use the `NAUTILUS_PATH` env var as the path)
+catalog = ParquetDataCatalog.from_env()
+
+instrument_id = InstrumentId.from_str("TSLA.XNAS")
+
+# Decode data to pyo3 objects
+loader = DatabentoDataLoader()
+trades = loader.from_dbn_file(
+    path=TEST_DATA_DIR / "databento" / "temp" / "tsla-xnas-20240107-20240206.trades.dbn.zst",
+    instrument_id=instrument_id,
+    as_legacy_cython=False,  # This is an optimization for writing to the catalog
+)
+
+# Write data
+catalog.write_data(trades)
+```
+----------------------------------------
+TITLE: Subscribe to Databento Imbalance Schema for Instrument Data
+DESCRIPTION: This example shows how to subscribe to the Databento `imbalance` schema for a specific instrument (AAPL.XNAS) using the lower-level generic methods for custom data types in Nautilus Trader.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: Python
+KEYWORDS: Databento,data subscription,data type:custom,imbalance,integration
+CODE:
+```
+from nautilus_trader.adapters.databento import DATABENTO_CLIENT_ID
+from nautilus_trader.adapters.databento import DatabentoImbalance
+from nautilus_trader.model import DataType
+
+instrument_id = InstrumentId.from_str("AAPL.XNAS")
+self.subscribe_data(
+    data_type=DataType(DatabentoImbalance, metadata={"instrument_id": instrument_id}),
+    client_id=DATABENTO_CLIENT_ID,
+)
+```
+----------------------------------------
+TITLE: Convert pyo3 Price to Cython Price in Nautilus Trader
+DESCRIPTION: This snippet demonstrates the general pattern for converting a pyo3 provided `Price` object to a Cython provided `Price` object, which is necessary for compatibility with certain Nautilus Trader methods.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: Python
+KEYWORDS: Price,compatibility,conversion,data types,pyo3
+CODE:
+```
+price = Price.from_raw(pyo3_price.raw, pyo3_price.precision)
+```
+----------------------------------------
+TITLE: Register Databento Live Data Client Factory with TradingNode
+DESCRIPTION: This snippet demonstrates how to instantiate a TradingNode with a configuration and then register the DatabentoLiveDataClientFactory. This step is crucial for enabling real-time data processing from Databento within your trading node.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: python
+KEYWORDS: Databento,TradingNode,client:factory,dev:build,development,integration,live trading
+CODE:
+```
+from nautilus_trader.adapters.databento.factories import DatabentoLiveDataClientFactory
+from nautilus_trader.live.node import TradingNode
+
+# Instantiate the live trading node with a configuration
+node = TradingNode(config=config)
+
+# Register the client factory with the node
+node.add_data_client_factory(DATABENTO, DatabentoLiveDataClientFactory)
+
+# Finally build the node
+node.build()
+```
+----------------------------------------
+TITLE: Configure TradingNode for Databento Data Client
+DESCRIPTION: This snippet shows how to add a 'DATABENTO' section to your TradingNodeConfig, enabling the integration of Databento data clients with your live trading node. It outlines essential parameters for API key, gateways, and instrument loading.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: python
+KEYWORDS: API credentials,Databento,TradingNodeConfig,client:data,configuration,instrument provider,integration,live trading
+CODE:
+```
+from nautilus_trader.adapters.databento import DATABENTO
+from nautilus_trader.live.node import TradingNode
+
+config = TradingNodeConfig(
+    ...,  # Omitted
+    data_clients={
+        DATABENTO: {
+            "api_key": None,  # 'DATABENTO_API_KEY' env var
+            "http_gateway": None,  # Override for the default HTTP historical gateway
+            "live_gateway": None,  # Override for the default raw TCP real-time gateway
+            "instrument_provider": InstrumentProviderConfig(load_all=True),
+            "instrument_ids": None,  # Nautilus instrument IDs to load on start
+            "parent_symbols": None,  # Databento parent symbols to load on start
+        },
+    },
+    ..., # Omitted
+)
+```
+----------------------------------------
+TITLE: Databento Data Client Configuration Parameters Reference
+DESCRIPTION: This section provides a detailed reference for the configuration parameters available for the Databento data client, including their purpose, expected values, and how they influence data loading and real-time feeds.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: APIDOC
+KEYWORDS: API credentials,Databento,client:data,configuration,documentation:API-reference,gateway,instrument provider,integration
+CODE:
+```
+api_key: The Databento API secret key. If None then will source the DATABENTO_API_KEY environment variable.
+http_gateway: The historical HTTP client gateway override (useful for testing and typically not needed by most users).
+live_gateway: The raw TCP real-time client gateway override (useful for testing and typically not needed by most users).
+parent_symbols: The Databento parent symbols to subscribe to instrument definitions for on start. This is a map of Databento dataset keys -> to a sequence of the parent symbols, e.g. {'GLBX.MDP3', ['ES.FUT', 'ES.OPT']} (for all E-mini S&P 500 futures and options products).
+instrument_ids: The instrument IDs to request instrument definitions for on start.
+timeout_initial_load: The timeout (seconds) to wait for instruments to load (concurrently per dataset).
+mbo_subscriptions_delay: The timeout (seconds) to wait for MBO/L3 subscriptions (concurrently per dataset). After the timeout the MBO order book feed will start and replay messages from the initial snapshot and then all deltas.
+```
+----------------------------------------
+TITLE: Processing Databento MBO (Market By Order) Data in NautilusTrader
+DESCRIPTION: Explains how NautilusTrader processes Databento's highest granularity MBO schema, which provides full order book depth and sometimes trade information. It details the generation of `OrderBookDelta` and optional `TradeTick` objects, and the buffering mechanism using the `F_LAST` flag for live data and during replay startup.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: APIDOC
+KEYWORDS: Databento,L3,MBO,OrderBookDelta,TradeTick,data handling,data type:order-book-delta,data type:tick,documentation:API-reference,integration
+CODE:
+```
+Databento MBO Schema:
+- Highest granularity data, represents full order book depth.
+- Some messages provide trade information.
+
+NautilusTrader Decoding:
+- Produces an OrderBookDelta.
+- Optionally produces a TradeTick (when trade information is present).
+
+Live Data Client Behavior:
+- Buffers MBO messages until an F_LAST flag is seen.
+- A discrete OrderBookDeltas container object is then passed to the registered handler.
+
+Order Book Snapshots:
+- Buffered into a discrete OrderBookDeltas container object during the replay startup sequence.
+```
+----------------------------------------
+TITLE: Supported Databento Schemas and NautilusTrader Data Type Mappings
+DESCRIPTION: This table outlines the mapping between Databento Binary Encoding (DBN) schemas and their corresponding data types within NautilusTrader. It specifies how various market data formats from Databento are normalized and represented for use in NautilusTrader's backtesting and live trading environments.
+SOURCE: docs/integrations/databento.md
+LANGUAGE: APIDOC
+KEYWORDS: Databento,data types,documentation:API-reference,integration,mapping,schemas,symbology
+CODE:
+```
+| Databento schema | Nautilus data type                |
+|:-----------------|:----------------------------------|
+| MBO              | `OrderBookDelta`                  |
+| MBP_1            | `(QuoteTick, Option<TradeTick>)`  |
+| MBP_10           | `OrderBookDepth10`                |
+| BBO_1S           | `QuoteTick`                       |
+| BBO_1M           | `QuoteTick`                       |
+| TBBO             | `(QuoteTick, TradeTick)`          |
+| TRADES           | `TradeTick`                       |
+| OHLCV_1S         | `Bar`                             |
+| OHLCV_1M         | `Bar`                             |
+| OHLCV_1H         | `Bar`                             |
+| OHLCV_1D         | `Bar`                             |
+| DEFINITION       | `Instrument` (various types)      |
+| IMBALANCE        | `DatabentoImbalance`              |
+| STATISTICS       | `DatabentoStatistics`             |
+| STATUS           | `InstrumentStatus`                |
+```

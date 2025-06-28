@@ -1,0 +1,9 @@
+TITLE: Proptest Seed for Repeated SendMessage Failure
+DESCRIPTION: This seed represents a specific input sequence that caused a failure in a proptest run. The 'cc' prefix indicates a comment or a specific seed format. The input consists of ten repetitions of 'SendMessage(42)', which was identified as a shrinking target for a past failure.
+SOURCE: crates/common/proptest-regressions/throttler.txt
+LANGUAGE: Proptest Seed
+KEYWORDS: debugging,dev:testing,development,failure seed,language:rust,proptest,throttler
+CODE:
+```
+cc 289b8ba356b65df4440d71b9a27812e3a3f9d166562152757a054939977e0e49 # shrinks to inputs = [SendMessage(42), SendMessage(42), SendMessage(42), SendMessage(42), SendMessage(42), SendMessage(42), SendMessage(42), SendMessage(42), SendMessage(42), SendMessage(42)]
+```

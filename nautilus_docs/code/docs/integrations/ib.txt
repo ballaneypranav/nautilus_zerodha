@@ -1,0 +1,265 @@
+TITLE: Configuring and Running Nautilus Trader Node with Interactive Brokers Clients (Python)
+DESCRIPTION: This snippet configures a Nautilus Trader TradingNode for use with Interactive Brokers. It sets up the node configuration including logging and client configurations (assuming data_client_config and exec_client_config are defined elsewhere). It then adds the necessary Interactive Brokers data and execution client factories, builds the node, sets the venue, and runs the node in a try/finally block to ensure proper disposal.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: python
+KEYWORDS: IB_VENUE,TradingNode,client:factory,configuration,integration,integration:Interactive-Brokers,live trading,run,venue
+CODE:
+```
+from nautilus_trader.adapters.interactive_brokers.common import IB
+from nautilus_trader.adapters.interactive_brokers.common import IB_VENUE
+from nautilus_trader.adapters.interactive_brokers.factories import InteractiveBrokersLiveDataClientFactory
+from nautilus_trader.adapters.interactive_brokers.factories import InteractiveBrokersLiveExecClientFactory
+from nautilus_trader.config import LiveDataEngineConfig
+from nautilus_trader.config import LoggingConfig
+from nautilus_trader.config import TradingNodeConfig
+from nautilus_trader.live.node import TradingNode
+
+
+# ... [continuing from prior example code] ...
+
+# Configure the trading node
+config_node = TradingNodeConfig(
+    trader_id="TESTER-001",
+    logging=LoggingConfig(log_level="INFO"),
+    data_clients={IB: data_client_config},
+    exec_clients={IB: exec_client_config},
+    data_engine=LiveDataEngineConfig(
+        time_bars_timestamp_on_close=False,  # Use opening time as `ts_event`, as per IB standard
+        validate_data_sequence=True,         # Discards bars received out of sequence
+    ),
+)
+
+node = TradingNode(config=config_node)
+node.add_data_client_factory(IB, InteractiveBrokersLiveDataClientFactory)
+node.add_exec_client_factory(IB, InteractiveBrokersLiveExecClientFactory)
+node.build()
+node.portfolio.set_specific_venue(IB_VENUE)
+
+if __name__ == "__main__":
+    try:
+        node.run()
+    finally:
+        # Stop and dispose of the node with SIGINT/CTRL+C
+        node.dispose()
+```
+----------------------------------------
+TITLE: Configuring IB Data Client (Python)
+DESCRIPTION: This snippet illustrates the configuration of the InteractiveBrokersDataClientConfig. It includes settings for the IB Gateway port, handling revised bars, using regular trading hours, specifying the market data type (e.g., delayed frozen), and linking the instrument provider and dockerized gateway configurations.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: python
+KEYWORDS: InteractiveBrokersDataClientConfig,client:data,configuration,integration,integration:Interactive-Brokers,instrument provider,live trading
+CODE:
+```
+from nautilus_trader.adapters.interactive_brokers.config import IBMarketDataTypeEnum
+from nautilus_trader.adapters.interactive_brokers.config import InteractiveBrokersDataClientConfig
+
+data_client_config = InteractiveBrokersDataClientConfig(
+    ibg_port=4002,
+    handle_revised_bars=False,
+    use_regular_trading_hours=True,
+    market_data_type=IBMarketDataTypeEnum.DELAYED_FROZEN,  # Default is REALTIME if not set
+    instrument_provider=instrument_provider_config,
+    dockerized_gateway=dockerized_gateway_config,
+)
+```
+----------------------------------------
+TITLE: Configuring IB Instrument Provider (Python)
+DESCRIPTION: This snippet demonstrates how to create an InteractiveBrokersInstrumentProviderConfig object. It shows how to set the symbology method, control futures/options chain building, define expiry ranges, and specify instruments to load by ID or contract details.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: python
+KEYWORDS: IBContract,InteractiveBrokersInstrumentProviderConfig,configuration,futures chain,integration,integration:Interactive-Brokers,instrument provider,live trading,options chain,symbology
+CODE:
+```
+from nautilus_trader.adapters.interactive_brokers.config import InteractiveBrokersInstrumentProviderConfig
+from nautilus_trader.adapters.interactive_brokers.config import SymbologyMethod
+
+instrument_provider_config = InteractiveBrokersInstrumentProviderConfig(
+    symbology_method=SymbologyMethod.IB_SIMPLIFIED,
+    build_futures_chain=False,  # Set to True if fetching futures
+    build_options_chain=False,  # Set to True if fetching options
+    min_expiry_days=10,         # Relevant for futures/options with expiration
+    max_expiry_days=60,         # Relevant for futures/options with expiration
+    load_ids=frozenset(
+        [
+            "EUR/USD.IDEALPRO",
+            "BTC/USD.PAXOS",
+            "SPY.ARCA",
+            "V.NYSE",
+            "YMH24.CBOT",
+            "CLZ27.NYMEX",
+            "ESZ27.CME",
+        ],
+    ),
+    load_contracts=frozenset(
+        [
+            IBContract(secType='STK', symbol='SPY', exchange='SMART', primaryExchange='ARCA'),
+            IBContract(secType='STK', symbol='AAPL', exchange='SMART', primaryExchange='NASDAQ')
+        ]
+    ),
+)
+```
+----------------------------------------
+TITLE: Downloading and Saving Historical Data with IB Adapter - Python
+DESCRIPTION: Illustrates the process of using the HistoricInteractiveBrokersClient to request historical instrument and bar data for a specified contract (AAPL) and subsequently saving this data to a Parquet data catalog.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: python
+KEYWORDS: HistoricInteractiveBrokersClient,ParquetDataCatalog,bar,data catalog,data handling,data type:historical,data:loading,data:persistence,integration,integration:Interactive-Brokers,instrument
+CODE:
+```
+import datetime
+from nautilus_trader.adapters.interactive_brokers.common import IBContract
+from nautilus_trader.adapters.interactive_brokers.historic import HistoricInteractiveBrokersClient
+from nautilus_trader.persistence.catalog import ParquetDataCatalog
+
+
+async def main():
+    contract = IBContract(
+        secType="STK",
+        symbol="AAPL",
+        exchange="SMART",
+        primaryExchange="NASDAQ",
+    )
+    client = HistoricInteractiveBrokersClient()
+
+    instruments = await client.request_instruments(
+        contracts=[contract],
+    )
+
+    bars = await client.request_bars(
+        bar_specifications=["1-HOUR-LAST", "30-MINUTE-MID"],
+        end_date_time=datetime.datetime(2023, 11, 6, 16, 30),
+        tz_name="America/New_York",
+        duration="1 D",
+        contracts=[contract],
+    )
+
+    catalog = ParquetDataCatalog("./catalog")
+    catalog.write_data(instruments)
+    catalog.write_data(bars)
+```
+----------------------------------------
+TITLE: Connecting to Dockerized IB Gateway (Python)
+DESCRIPTION: Demonstrates how to configure, instantiate, and start a DockerizedIBGateway instance using DockerizedIBGatewayConfig. It shows how to check the login status and inspect container logs. Requires the nautilus_trader package with 'ib' and 'docker' extras installed, and Docker running. Inputs are username, password, and trading mode via config or environment variables. Outputs include boolean login status and container logs.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: python
+KEYWORDS: DockerizedIBGateway,configuration,gateway,integration,integration:Interactive-Brokers,live trading,tech:docker,technology
+CODE:
+```
+from nautilus_trader.adapters.interactive_brokers.config import DockerizedIBGatewayConfig
+from nautilus_trader.adapters.interactive_brokers.gateway import DockerizedIBGateway
+
+gateway_config = DockerizedIBGatewayConfig(
+    username="test",
+    password="test",
+    trading_mode="paper",
+)
+
+# This may take a short while to start up, especially the first time
+gateway = DockerizedIBGateway(
+    config=gateway_config
+)
+gateway.start()
+
+# Confirm you are logged in
+print(gateway.is_logged_in(gateway.container))
+
+# Inspect the logs
+print(gateway.container.logs())
+```
+----------------------------------------
+TITLE: Install NautilusTrader with IB and Docker Support (Bash)
+DESCRIPTION: Installs or upgrades the NautilusTrader Python package using pip, including optional dependencies for Interactive Brokers ('ib') and Docker ('docker') integration. Requires pip to be installed.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: bash
+KEYWORDS: dev:extras,dev:installation,dev:package-management,development,integration:Interactive-Brokers,tech:docker,technology
+CODE:
+```
+pip install --upgrade "nautilus_trader[ib,docker]"
+```
+----------------------------------------
+TITLE: Configuring IB Execution Client (Python)
+DESCRIPTION: This snippet shows how to configure the InteractiveBrokersExecClientConfig. It requires setting the IB Gateway port, the account ID that matches the connected IB Gateway/TWS, and linking the dockerized gateway, instrument provider, and routing configurations for trade execution and account management.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: python
+KEYWORDS: InteractiveBrokersExecClientConfig,account ID,client:execution,configuration,integration,integration:Interactive-Brokers,live trading
+CODE:
+```
+from nautilus_trader.adapters.interactive_brokers.config import InteractiveBrokersExecClientConfig
+from nautilus_trader.config import RoutingConfig
+
+exec_client_config = InteractiveBrokersExecClient.Config(
+    ibg_port=4002,
+    account_id="DU123456",  # Must match the connected IB Gateway/TWS
+    dockerized_gateway=dockerized_gateway_config,
+    instrument_provider=instrument_provider_config,
+    routing=RoutingConfig(
+        default=True,
+    )
+)
+```
+----------------------------------------
+TITLE: Examples of IBContract Creation for Various Asset Types - Python
+DESCRIPTION: Provides multiple examples showing how to instantiate the IBContract class for different financial instruments, including Stocks, Bonds, Options, CFDs, Futures, Forex, and Crypto, highlighting the necessary parameters for each type.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: python
+KEYWORDS: IBContract,asset type,bond,crypto,forex,future,integration:Interactive-Brokers,instrument,live trading,option,stock
+CODE:
+```
+from nautilus_trader.adapters.interactive_brokers.common import IBContract
+
+# Stock
+IBContract(secType='STK', exchange='SMART', primaryExchange='ARCA', symbol='SPY')
+
+# Bond
+IBContract(secType='BOND', secIdType='ISIN', secId='US03076KAA60')
+
+# Option
+IBContract(secType='STK', exchange='SMART', primaryExchange='ARCA', symbol='SPY', lastTradeDateOrContractMonth='20251219', build_options_chain=True)
+
+# CFD
+IBContract(secType='CFD', symbol='IBUS30')
+
+# Future
+IBContract(secType='CONTFUT', exchange='CME', symbol='ES', build_futures_chain=True)
+
+# Forex
+IBContract(secType='CASH', exchange='IDEALPRO', symbol='EUR', currency='GBP')
+
+# Crypto
+IBContract(secType='CRYPTO', symbol='ETH', exchange='PAXOS', currency='USD')
+```
+----------------------------------------
+TITLE: Creating IBContract for Options Chain (Expiry/Range) - Python
+DESCRIPTION: Demonstrates how to create IBContract instances specifically configured to load options chains for an underlying index (SPX), either by specifying a precise expiry date or a range of expiry days.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: python
+KEYWORDS: IBContract,SPX,expiry,integration:Interactive-Brokers,live trading,options chain
+CODE:
+```
+for_loading_instrument_expiry = IBContract(
+    secType="IND",
+    symbol="SPX",
+    exchange="CBOE",
+    build_options_chain=True,
+    lastTradeDateOrContractMonth='20240718',
+)
+
+for_loading_instrument_range = IBContract(
+    secType="IND",
+    symbol="SPX",
+    exchange="CBOE",
+    build_options_chain=True,
+    min_expiry_days=0,
+    max_expiry_days=30,
+)
+```
+----------------------------------------
+TITLE: Build NautilusTrader from Source with All Extras (Bash)
+DESCRIPTION: Synchronizes dependencies and builds NautilusTrader from source using the uv package manager, including all optional extras like Interactive Brokers and Docker support. Requires uv to be installed.
+SOURCE: docs/integrations/ib.md
+LANGUAGE: bash
+KEYWORDS: dev:build,dev:extras,dev:installation,dev:source-build,development,integration:Interactive-Brokers,tech:docker,technology
+CODE:
+```
+uv sync --all-extras
+```

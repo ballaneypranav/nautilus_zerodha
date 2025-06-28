@@ -1,0 +1,19 @@
+TITLE: Pulling Docker Image for JupyterLab
+DESCRIPTION: Downloads the latest nightly build of the NautilusTrader JupyterLab Docker image from the GitHub Container Registry. The '--platform linux/amd64' flag ensures compatibility.
+SOURCE: docs/getting_started/index.md
+LANGUAGE: Shell
+KEYWORDS: dev:installation,development,image,pull,tech:docker,tech:jupyter,technology
+CODE:
+```
+docker pull ghcr.io/nautechsystems/jupyterlab:nightly --platform linux/amd64
+```
+----------------------------------------
+TITLE: Running Docker Container for JupyterLab
+DESCRIPTION: Runs the downloaded Docker image, mapping port 8888 on the host machine to port 8888 inside the container. This allows access to the Jupyter notebook server via 'localhost:8888' in a web browser.
+SOURCE: docs/getting_started/index.md
+LANGUAGE: Shell
+KEYWORDS: dev:installation,development,run,tech:docker,tech:jupyter,technology
+CODE:
+```
+docker run -p 8888:8888 ghcr.io/nautechsystems/jupyterlab:nightly
+```

@@ -1,0 +1,195 @@
+TITLE: Executing the Backtest Node
+DESCRIPTION: This snippet initializes a `BacktestNode` with the previously defined `config` and then executes the backtest using the `run()` method. The result of the backtest is captured in the `result` variable.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestNode,backtesting,configuration,run
+CODE:
+```
+node = BacktestNode(configs=[config])
+
+[result] = node.run()
+```
+----------------------------------------
+TITLE: Configuring Backtest Run Parameters
+DESCRIPTION: This comprehensive snippet configures the various components required for a backtest run. It defines venue settings, data configurations (linking to the catalog and specific instrument/time range), and strategy details, including its path, configuration path, and parameters like instrument ID, bar type, EMA periods, and trade size.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestDataConfig,BacktestRunConfig,BacktestVenueConfig,ImportableStrategyConfig,ParquetDataCatalog,backtesting,configuration,data catalog,strategy:EMA-cross
+CODE:
+```
+instrument = catalog.instruments()[0]
+
+venue_configs = [
+    BacktestVenueConfig(
+        name="SIM",
+        oms_type="HEDGING",
+        account_type="MARGIN",
+        base_currency="USD",
+        starting_balances=["1000000 USD"],
+    ),
+]
+
+data_configs = [
+    BacktestDataConfig(
+        catalog_path=str(catalog.path),
+        data_cls=QuoteTick,
+        instrument_id=instrument.id,
+        start_time=start,
+        end_time=end,
+    ),
+]
+
+strategies = [
+    ImportableStrategyConfig(
+        strategy_path="nautilus_trader.examples.strategies.ema_cross:EMACross",
+        config_path="nautilus_trader.examples.strategies.ema_cross:EMACrossConfig",
+        config={
+            "instrument_id": instrument.id,
+            "bar_type": BarType.from_str(f"{instrument.id.value}-15-MINUTE-BID-INTERNAL"),
+            "fast_ema_period": 10,
+            "slow_ema_period": 20,
+            "trade_size": Decimal(1_000_000),
+        },
+    ),
+]
+
+config = BacktestRunConfig(
+    engine=BacktestEngineConfig(strategies=strategies),
+    data=data_configs,
+    venues=venue_configs,
+)
+```
+----------------------------------------
+TITLE: Loading and Wrangling Raw Tick Data
+DESCRIPTION: This snippet loads the first raw data file found into a pandas DataFrame using `CSVTickDataLoader`, renames columns for consistency, and then processes the raw quotes into `QuoteTick` objects using a `QuoteTickDataWrangler` for a specified instrument (EUR/USD).
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: CSV,FX,QuoteTickDataWrangler,TestInstrumentProvider,data handling,data type:tick,data:loading,data:wrangling,instrument,library:pandas
+CODE:
+```
+# Here we just take the first data file found and load into a pandas DataFrame
+df = CSVTickDataLoader.load(raw_files[0], index_col=0, datetime_format="%Y%m%d %H%M%S%f")
+df.columns = ["timestamp", "bid_price", "ask_price"]
+
+# Process quotes using a wrangler
+EURUSD = TestInstrumentProvider.default_fx_ccy("EUR/USD")
+wrangler = QuoteTickDataWrangler(EURUSD)
+
+ticks = wrangler.process(df)
+```
+----------------------------------------
+TITLE: Setting Up Parquet Data Catalog
+DESCRIPTION: This snippet defines the path for the `ParquetDataCatalog`, clears any existing directory at that path to ensure a fresh start, creates the directory, and then initializes a `ParquetDataCatalog` instance. This catalog will be used to store and retrieve processed data.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: ParquetDataCatalog,data catalog,data:persistence,directory management,initialization
+CODE:
+```
+CATALOG_PATH = os.getcwd() + "/catalog"
+
+# Clear if it already exists, then create fresh
+if os.path.exists(CATALOG_PATH):
+    shutil.rmtree(CATALOG_PATH)
+os.mkdir(CATALOG_PATH)
+
+# Create a catalog instance
+catalog = ParquetDataCatalog(CATALOG_PATH)
+```
+----------------------------------------
+TITLE: Querying Quote Tick Data from Catalog
+DESCRIPTION: This snippet defines a start and end timestamp, then queries the `ParquetDataCatalog` to retrieve `QuoteTick` data for the `EURUSD` instrument within that specified time range. It then displays the first 10 retrieved ticks.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: QuoteTick,data catalog,data type:tick,data:persistence,instrument,query,symbol:EURUSD,time range
+CODE:
+```
+start = dt_to_unix_nanos(pd.Timestamp("2020-01-03", tz="UTC"))
+end =  dt_to_unix_nanos(pd.Timestamp("2020-01-04", tz="UTC"))
+
+ticks = catalog.quote_ticks(instrument_ids=[EURUSD.id.value], start=start, end=end)
+ticks[:10]
+```
+----------------------------------------
+TITLE: Writing Instruments and Tick Data to Catalog
+DESCRIPTION: This snippet writes the defined `EURUSD` instrument and the processed `ticks` data into the `ParquetDataCatalog`. This makes the data persistently available for backtesting and other operations.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: ParquetDataCatalog,data catalog,data handling,data type:tick,data:persistence,instrument
+CODE:
+```
+catalog.write_data([EURUSD])
+catalog.write_data(ticks)
+```
+----------------------------------------
+TITLE: Displaying Backtest Results
+DESCRIPTION: This snippet simply outputs the `result` object obtained from the backtest execution. This object typically contains performance metrics, trade logs, and other relevant information from the backtest run.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,display,reporting & analysis,results
+CODE:
+```
+result
+```
+----------------------------------------
+TITLE: Importing Nautilus Trader Modules and Dependencies
+DESCRIPTION: This snippet imports necessary modules and classes from `nautilus_trader`, `pandas`, `os`, `shutil`, and `pathlib`. These imports provide functionalities for backtesting, data handling, persistence, and utility operations required for loading and processing external data.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestNode,ParquetDataCatalog,QuoteTick,backtesting,configuration,data catalog,data type:tick,dev:imports,development
+CODE:
+```
+import os
+import shutil
+from decimal import Decimal
+from pathlib import Path
+
+import pandas as pd
+
+from nautilus_trader.backtest.node import BacktestDataConfig
+from nautilus_trader.backtest.node import BacktestEngineConfig
+from nautilus_trader.backtest.node import BacktestNode
+from nautilus_trader.backtest.node import BacktestRunConfig
+from nautilus_trader.backtest.node import BacktestVenueConfig
+from nautilus_trader.config import ImportableStrategyConfig
+from nautilus_trader.core.datetime import dt_to_unix_nanos
+from nautilus_trader.model import BarType
+from nautilus_trader.model import QuoteTick
+from nautilus_trader.persistence.catalog import ParquetDataCatalog
+from nautilus_trader.persistence.wranglers import QuoteTickDataWrangler
+from nautilus_trader.test_kit.providers import CSVTickDataLoader
+from nautilus_trader.test_kit.providers import TestInstrumentProvider
+```
+----------------------------------------
+TITLE: Verifying Instruments in Catalog
+DESCRIPTION: This snippet demonstrates how to fetch all instruments currently stored in the `ParquetDataCatalog`. This serves as a quick check to confirm that the instrument data was successfully written.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: data catalog,dev:verification,development,instrument,query
+CODE:
+```
+# Fetch all instruments from catalog (as a check)
+catalog.instruments()
+```
+----------------------------------------
+TITLE: Locating and Verifying Raw Data Files
+DESCRIPTION: This snippet expands the `DATA_DIR` path, iterates through its contents to find raw data files, and asserts that at least one file is found. This ensures the data source is accessible before proceeding.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: assertion,data handling,dev:verification,development,file system
+CODE:
+```
+path = Path(DATA_DIR).expanduser() / "HISTDATA"
+raw_files = list(path.iterdir())
+assert raw_files, f"Unable to find any histdata files in directory {path}"
+raw_files
+```
+----------------------------------------
+TITLE: Defining Data Directory Path
+DESCRIPTION: This line defines a string variable `DATA_DIR` pointing to the expected location of the historical data files. This path will be used later to locate and load the raw data.
+SOURCE: docs/tutorials/loading_external_data.ipynb
+LANGUAGE: python
+KEYWORDS: configuration,data handling,directory path
+CODE:
+```
+DATA_DIR = "~/Downloads/Data/"
+```

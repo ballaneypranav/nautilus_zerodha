@@ -1,0 +1,177 @@
+TITLE: Generating Positions Report for Backtest
+DESCRIPTION: This snippet generates a report summarizing all positions held during the backtest. It provides insights into the strategy's exposure and how positions were managed throughout the simulation.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: backtesting,position,reporting & analysis
+CODE:
+```
+engine.trader.generate_positions_report()
+```
+----------------------------------------
+TITLE: Adding Instruments and Processing FX Bar Data
+DESCRIPTION: This section adds a USD/JPY instrument to the backtest engine and processes historical bid and ask bar data into quote ticks using a `QuoteTickDataWrangler`. This prepared data is then added to the engine for the backtest simulation.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: FX,QuoteTickDataWrangler,add_instrument,backtesting,bar,data handling,data type:tick,data:add,instrument
+CODE:
+```
+# Add instruments
+USDJPY_SIM = TestInstrumentProvider.default_fx_ccy("USD/JPY", SIM)
+engine.add_instrument(USDJPY_SIM)
+
+# Add data
+wrangler = QuoteTickDataWrangler(instrument=USDJPY_SIM)
+ticks = wrangler.process_bar_data(
+    bid_data=provider.read_csv_bars("fxcm/usdjpy-m1-bid-2013.csv"),
+    ask_data=provider.read_csv_bars("fxcm/usdjpy-m1-ask-2013.csv"),
+)
+engine.add_data(ticks)
+```
+----------------------------------------
+TITLE: Configuring and Adding EMA Cross Strategy
+DESCRIPTION: This code configures an `EMACross` strategy with specific parameters such as instrument ID, bar type, EMA periods, and trade size. The configured strategy is then instantiated and added to the backtest engine, making it active for the simulation.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: EMACrossConfig,add_strategy,backtesting,configuration,strategy,strategy:EMA-cross
+CODE:
+```
+# Configure your strategy
+config = EMACrossConfig(
+    instrument_id=USDJPY_SIM.id,
+    bar_type=BarType.from_str("USD/JPY.SIM-5-MINUTE-BID-INTERNAL"),
+    fast_ema_period=10,
+    slow_ema_period=20,
+    trade_size=Decimal(1_000_000),
+)
+
+# Instantiate and add your strategy
+strategy = EMACross(config=config)
+engine.add_strategy(strategy=strategy)
+```
+----------------------------------------
+TITLE: Initializing NautilusTrader Backtest Engine
+DESCRIPTION: This code initializes the `BacktestEngineConfig` with a trader ID and logging level, and optionally bypasses pre-trade risk checks. It then uses this configuration to build the `BacktestEngine` instance, which is the core component for running the backtest.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: BacktestEngine,BacktestEngineConfig,backtesting,configuration,engine,logging,risk engine
+CODE:
+```
+# Initialize a backtest configuration
+config = BacktestEngineConfig(
+    trader_id="BACKTESTER-001",
+    logging=LoggingConfig(log_level="ERROR"),
+    risk_engine=RiskEngineConfig(
+        bypass=True  # Example of bypassing pre-trade risk checks for backtests
+    )
+)
+
+# Build backtest engine
+engine = BacktestEngine(config=config)
+```
+----------------------------------------
+TITLE: Executing NautilusTrader Backtest Engine
+DESCRIPTION: This simple line of code initiates the backtest process. The `run()` method processes all loaded data through the configured venues and strategies, simulating trading activity and generating a post-analysis report upon completion.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: backtesting,engine,run
+CODE:
+```
+engine.run()
+```
+----------------------------------------
+TITLE: Adding Simulated FX Trading Venue to Backtest
+DESCRIPTION: This snippet adds a simulated FX ECN venue to the backtest engine. It configures the venue with an OMS type, account type, starting balances in USD and JPY, the previously defined fill model, and the FX rollover interest module.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: FX,add_venue,backtesting,configuration,feature:order-fill-simulation,feature:rollover-interest,margin account,venue,venue:simulated
+CODE:
+```
+SIM = Venue("SIM")
+engine.add_venue(
+    venue=SIM,
+    oms_type=OmsType.HEDGING,  # Venue will generate position IDs
+    account_type=AccountType.MARGIN,
+    base_currency=None,  # Multi-currency account
+    starting_balances=[Money(1_000_000, USD), Money(10_000_000, JPY)],
+    fill_model=fill_model,
+    modules=[fx_rollover_interest],
+)
+```
+----------------------------------------
+TITLE: Importing NautilusTrader Modules for Backtesting
+DESCRIPTION: This snippet imports all necessary classes and modules from the NautilusTrader library and Python's `decimal` module. These imports are foundational for setting up the backtest engine, defining configurations, handling financial models, managing instruments, and processing data.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: BacktestEngine,EMACross,FX,FillModel,backtesting,configuration,dev:imports,development
+CODE:
+```
+from decimal import Decimal
+
+from nautilus_trader.backtest.engine import BacktestEngine
+from nautilus_trader.backtest.engine import BacktestEngineConfig
+from nautilus_trader.backtest.models import FillModel
+from nautilus_trader.backtest.modules import FXRolloverInterestConfig
+from nautilus_trader.backtest.modules import FXRolloverInterestModule
+from nautilus_trader.config import LoggingConfig
+from nautilus_trader.config import RiskEngineConfig
+from nautilus_trader.examples.strategies.ema_cross import EMACross
+from nautilus_trader.examples.strategies.ema_cross import EMACrossConfig
+from nautilus_trader.model import BarType
+from nautilus_trader.model import Money
+from nautilus_trader.model import Venue
+from nautilus_trader.model.currencies import JPY
+from nautilus_trader.model.currencies import USD
+from nautilus_trader.model.enums import AccountType
+from nautilus_trader.model.enums import OmsType
+from nautilus_trader.persistence.wranglers import QuoteTickDataWrangler
+from nautilus_trader.test_kit.providers import TestDataProvider
+from nautilus_trader.test_kit.providers import TestInstrumentProvider
+```
+----------------------------------------
+TITLE: Generating Account Report for Backtest
+DESCRIPTION: This snippet generates a detailed account report for the specified simulated venue. The report provides an overview of the account's financial status, including balances and PnL, at the end of the backtest.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: account,backtesting,reporting & analysis,venue
+CODE:
+```
+engine.trader.generate_account_report(SIM)
+```
+----------------------------------------
+TITLE: Configuring Probabilistic Fill Model for Backtest
+DESCRIPTION: This code defines a `FillModel` with specified probabilities for fills on limit and stop orders, and a probability for slippage. This model simulates order execution behavior within the backtest environment, influencing how trades are filled.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: FillModel,backtesting,feature:order-fill-simulation,probabilistic fill,reproducibility,slippage
+CODE:
+```
+fill_model = FillModel(
+    prob_fill_on_limit=0.2,
+    prob_fill_on_stop=0.95,
+    prob_slippage=0.5,
+    random_seed=42,
+)
+```
+----------------------------------------
+TITLE: Generating Order Fills Report for Backtest
+DESCRIPTION: This code produces a report detailing all order fills that occurred during the backtest. This report is useful for analyzing execution quality and understanding how orders were matched and filled.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: backtesting,execution,order fills,reporting & analysis
+CODE:
+```
+engine.trader.generate_order_fills_report()
+```
+----------------------------------------
+TITLE: Adding FX Rollover Interest Simulation Module
+DESCRIPTION: This snippet demonstrates how to add an optional `FXRolloverInterestModule` to simulate rollover interest in the backtest. It reads interest rate data from a CSV file using `TestDataProvider` and configures the module with this data.
+SOURCE: docs/tutorials/backtest_fx_bars.ipynb
+LANGUAGE: Python
+KEYWORDS: FX,FXRolloverInterestModule,backtesting,feature:rollover-interest,module,simulation
+CODE:
+```
+provider = TestDataProvider()
+interest_rate_data = provider.read_csv("short-term-interest.csv")
+config = FXRolloverInterestConfig(interest_rate_data)
+fx_rollover_interest = FXRolloverInterestModule(config=config)
+```

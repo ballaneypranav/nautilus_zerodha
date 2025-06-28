@@ -1,0 +1,142 @@
+TITLE: Configure TradingNode with Betfair Clients in Python
+DESCRIPTION: This snippet demonstrates how to set up a `TradingNode` for live trading with Betfair data and execution clients. It configures the `TradingNodeConfig` with Betfair clients, specifying 'AUD' as the account currency, and then adds the respective data and execution client factories to the node.
+SOURCE: docs/integrations/betfair.md
+LANGUAGE: python
+KEYWORDS: TradingNode,client:factory,configuration,integration,integration:Betfair,live trading
+CODE:
+```
+from nautilus_trader.adapters.betfair import BETFAIR
+from nautilus_trader.adapters.betfair import BetfairLiveDataClientFactory
+from nautilus_trader.adapters.betfair import BetfairLiveExecClientFactory
+from nautilus_trader.config import TradingNodeConfig
+from nautilus_trader.live.node import TradingNode
+
+# Configure Betfair data and execution clients (using AUD account currency)
+config = TradingNodeConfig(
+    data_clients={BETFAIR: {"account_currency": "AUD"}},
+    exec_clients={BETFAIR: {"account_currency": "AUD"}}
+)
+
+# Build the TradingNode with Betfair adapter factories
+node = TradingNode(config)
+node.add_data_client_factory(BETFAIR, BetfairLiveDataClientFactory)
+node.add_exec_client_factory(BETFAIR, BetfairLiveExecClientFactory)
+node.build()
+```
+----------------------------------------
+TITLE: Betfair Execution Client Configuration Options
+DESCRIPTION: Details the configuration options for the Betfair execution client that influence order behavior, including settings for account state calculation, reconciliation, and handling of external orders.
+SOURCE: docs/integrations/betfair.md
+LANGUAGE: APIDOC
+KEYWORDS: Betfair,account state,client:execution,configuration,documentation:API-reference,integration,reconciliation
+CODE:
+```
+Option                       | Default | Description
+-----------------------------|---------|-------------------------------------------
+calculate_account_state    | True    | If True, calculates account state from events.
+request_account_state_secs | 300     | Interval for account state checks in seconds (0 disables).
+reconcile_market_ids_only  | False   | If True, only reconciles orders for configured market IDs.
+ignore_external_orders     | False   | If True, silently ignores orders not found in cache.
+```
+----------------------------------------
+TITLE: Configure Betfair API Credentials
+DESCRIPTION: Guide on supplying Betfair API credentials, including username, password, application key, and certificate directory, preferably via environment variables for secure management.
+SOURCE: docs/integrations/betfair.md
+LANGUAGE: bash
+KEYWORDS: API credentials,Betfair,certificate,configuration,configuration:environment-variables,integration,security
+CODE:
+```
+export BETFAIR_USERNAME=<your_username>
+export BETFAIR_PASSWORD=<your_password>
+export BETFAIR_APP_KEY=<your_app_key>
+export BETFAIR_CERTS_DIR=<path_to_certificate_dir>
+```
+----------------------------------------
+TITLE: Betfair Supported Advanced Order Features
+DESCRIPTION: Summarizes the advanced order features supported by Betfair, noting that Order Modification is limited to non-exposure changing fields, while Bracket/OCO Orders and Iceberg Orders are not supported.
+SOURCE: docs/integrations/betfair.md
+LANGUAGE: APIDOC
+KEYWORDS: Betfair,documentation:API-reference,feature:advanced-orders,integration,limitations,order modification
+CODE:
+```
+Feature            | Betfair | Notes
+--------------------|---------|------------------------------------------
+Order Modification | ✓       | Limited to non-exposure changing fields.
+Bracket/OCO Orders | -       | *Not supported*.
+Iceberg Orders     | -       | *Not supported*.
+```
+----------------------------------------
+TITLE: Betfair Supported Order Types
+DESCRIPTION: Details the order types supported by Betfair within NautilusTrader, noting that only LIMIT orders are applicable to the betting exchange model, while MARKET, STOP_MARKET, STOP_LIMIT, MARKET_IF_TOUCHED, LIMIT_IF_TOUCHED, and TRAILING_STOP_MARKET orders are not supported.
+SOURCE: docs/integrations/betfair.md
+LANGUAGE: APIDOC
+KEYWORDS: Betfair,documentation:API-reference,integration,limit order,order types,supported features
+CODE:
+```
+Order Type             | Betfair | Notes
+------------------------|---------|-------------------------------------
+MARKET               | -       | Not applicable to betting exchange.
+LIMIT                | ✓       | Orders placed at specific odds.
+STOP_MARKET          | -       | *Not supported*.
+STOP_LIMIT           | -       | *Not supported*.
+MARKET_IF_TOUCHED    | -       | *Not supported*.
+LIMIT_IF_TOUCHED     | -       | *Not supported*.
+TRAILING_STOP_MARKET | -       | *Not supported*.
+```
+----------------------------------------
+TITLE: Install NautilusTrader with Betfair Support
+DESCRIPTION: Instructions for installing NautilusTrader with Betfair integration using pip or building from source with uv.
+SOURCE: docs/integrations/betfair.md
+LANGUAGE: bash
+KEYWORDS: Betfair,dev:extras,dev:installation,dev:package-management,development,integration
+CODE:
+```
+pip install --upgrade "nautilus_trader[betfair]"
+```
+
+LANGUAGE: bash
+CODE:
+```
+uv sync --all-extras
+```
+----------------------------------------
+TITLE: Betfair Supported Time-in-Force Options
+DESCRIPTION: Lists the Time-in-Force options and their applicability to Betfair, clarifying that GTC, GTD, FOK, and IOC are not used as the betting exchange operates on a different model.
+SOURCE: docs/integrations/betfair.md
+LANGUAGE: APIDOC
+KEYWORDS: Betfair,TimeInForce,documentation:API-reference,integration,limitations
+CODE:
+```
+Time-in-Force | Betfair | Notes
+---------------|---------|-----------------------------------------
+GTC         | -       | Betting exchange uses different model.
+GTD         | -       | Betting exchange uses different model.
+FOK         | -       | Betting exchange uses different model.
+IOC         | -       | Betting exchange uses different model.
+```
+----------------------------------------
+TITLE: Betfair Adapter Primary Components Overview
+DESCRIPTION: Describes the three main components of the NautilusTrader Betfair adapter: BetfairInstrumentProvider for market conversion, BetfairDataClient for real-time data streaming, and BetfairExecutionClient for order submission and tracking.
+SOURCE: docs/integrations/betfair.md
+LANGUAGE: APIDOC
+KEYWORDS: Betfair,DataClient,ExecutionClient,InstrumentProvider,adapters,components,documentation:API-reference,integration
+CODE:
+```
+Betfair Adapter Components:
+- BetfairInstrumentProvider: loads Betfair markets and converts them into Nautilus instruments.
+- BetfairDataClient: streams real-time market data from the Exchange Streaming API.
+- BetfairExecutionClient: submits orders (bets) and tracks execution status via the REST API.
+```
+----------------------------------------
+TITLE: Betfair Supported Execution Instructions
+DESCRIPTION: Outlines the execution instructions supported by Betfair, indicating that post_only and reduce_only are not applicable to the betting exchange model.
+SOURCE: docs/integrations/betfair.md
+LANGUAGE: APIDOC
+KEYWORDS: Betfair,documentation:API-reference,execution instructions,integration,limitations
+CODE:
+```
+Instruction   | Betfair | Notes
+---------------|---------|-----------------------------------------
+post_only   | -       | Not applicable to betting exchange.
+reduce_only | -       | Not applicable to betting exchange.
+```

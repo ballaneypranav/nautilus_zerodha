@@ -1,0 +1,249 @@
+TITLE: Install NautilusTrader from PyPI
+DESCRIPTION: This command installs or upgrades the latest stable version of the `nautilus_trader` package from PyPI using pip. It is the recommended way for most users to get started with the library, ensuring you have the most recent stable release.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:installation,dev:package-index:pypi,dev:package-management,dev:release-type:stable,development
+CODE:
+```
+pip install -U nautilus_trader
+```
+----------------------------------------
+TITLE: Install uv Package Manager
+DESCRIPTION: Installs the uv package manager using a curl script. uv is used for managing Python dependencies and installing NautilusTrader.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:cli,dev:installation,dev:package-management,development
+CODE:
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+----------------------------------------
+TITLE: Install NautilusTrader from GitHub Release Wheel
+DESCRIPTION: Installs a pre-built binary wheel file downloaded from a GitHub release. This method is simpler than building from source.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:installation,dev:package-index:github,dev:package-management,dev:release-type:binary,development
+CODE:
+```
+pip install <file-name>.whl
+```
+----------------------------------------
+TITLE: Clone and Install NautilusTrader from Source with uv
+DESCRIPTION: Clones the NautilusTrader repository from GitHub and installs its dependencies using uv. The --depth 1 flag ensures a lightweight clone.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:build,dev:dependencies,dev:installation,dev:package-management,dev:source-build,development
+CODE:
+```
+git clone --branch develop --depth 1 https://github.com/nautechsystems/nautilus_trader
+cd nautilus_trader
+uv sync --all-extras
+```
+----------------------------------------
+TITLE: Install Rustup on Linux and macOS
+DESCRIPTION: Installs the Rust toolchain using a curl script. This is a prerequisite for building NautilusTrader from source.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:cli,dev:installation,dev:source-build,development,language:rust
+CODE:
+```
+curl https://sh.rustup.rs -sSf | sh
+```
+----------------------------------------
+TITLE: Install Rustup on Linux and macOS
+DESCRIPTION: Installs the Rust toolchain using a curl script. This is a prerequisite for building NautilusTrader from source.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:cli,dev:installation,dev:source-build,development,language:rust
+CODE:
+```
+curl https://sh.rustup.rs -sSf | sh
+```
+----------------------------------------
+TITLE: Install NautilusTrader with specific optional dependencies (extras)
+DESCRIPTION: This command demonstrates how to install `nautilus_trader` along with optional dependencies, referred to as 'extras'. The example shows installing dependencies required for Docker and Interactive Brokers integration, allowing access to specific adapter functionalities.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:extras,dev:installation,dev:package-management,development,integration:Interactive-Brokers,tech:docker,technology
+CODE:
+```
+pip install -U "nautilus_trader[docker,ib]"
+```
+----------------------------------------
+TITLE: Install latest pre-release NautilusTrader from Nautech Systems package index
+DESCRIPTION: This command installs the latest available pre-release version of `nautilus_trader`, including development wheels, from the Nautech Systems package index. The `--pre` flag enables pip to consider and install pre-release versions, useful for testing upcoming features.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:installation,dev:package-index,dev:package-management,dev:release-type:pre-release,development
+CODE:
+```
+pip install -U nautilus_trader --pre --index-url=https://packages.nautechsystems.io/simple
+```
+----------------------------------------
+TITLE: Install stable NautilusTrader from Nautech Systems package index
+DESCRIPTION: This command installs the latest stable release of `nautilus_trader` directly from the Nautech Systems package index. This index is PEP-503 compliant and hosts official releases, providing an alternative source for stable builds.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:installation,dev:package-index,dev:package-management,dev:release-type:stable,development
+CODE:
+```
+pip install -U nautilus_trader --index-url=https://packages.nautechsystems.io/simple
+```
+----------------------------------------
+TITLE: Start Redis Docker Container
+DESCRIPTION: Pulls and runs the latest Redis Docker image in detached mode, exposing it on port 6379. This provides an optional Redis backend for NautilusTrader's cache or message bus.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: docker
+KEYWORDS: cache,dev:installation,development,message bus,run,tech:docker,tech:redis,technology
+CODE:
+```
+docker run -d --name redis -p 6379:6379 redis:latest
+```
+----------------------------------------
+TITLE: Enable High-Precision Mode (128-bit) for NautilusTrader Build
+DESCRIPTION: This snippet shows how to set the `HIGH_PRECISION` environment variable to `true` before running `make install-debug` to compile NautilusTrader with 128-bit high-precision support.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: configuration:environment-variables,dev:build,dev:source-build,development,feature:128-bit,feature:high-precision
+CODE:
+```
+export HIGH_PRECISION=true
+make install-debug
+```
+----------------------------------------
+TITLE: Manage Redis Docker Container
+DESCRIPTION: Commands to start and stop the named Redis Docker container. These commands allow control over the running Redis instance.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: docker
+KEYWORDS: dev:tooling,development,start,stop,tech:docker,tech:redis,technology
+CODE:
+```
+docker start redis
+docker stop redis
+```
+----------------------------------------
+TITLE: Set PyO3 Environment Variables for NautilusTrader Compilation (Linux/macOS)
+DESCRIPTION: Sets LD_LIBRARY_PATH and PYO3_PYTHON environment variables. These are crucial for PyO3 to correctly link against the Python interpreter during compilation of Python-Rust bindings.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: LD_LIBRARY_PATH,PyO3,configuration:environment-variables,dev:source-build,development
+CODE:
+```
+# Set the library path for the Python interpreter (in this case Python 3.13.4)
+export LD_LIBRARY_PATH="$HOME/.local/share/uv/python/cpython-3.13.4-linux-x86_64-gnu/lib:$LD_LIBRARY_PATH"
+
+# Set the Python executable path for PyO3
+export PYO3_PYTHON=$(pwd)/.venv/bin/python
+```
+----------------------------------------
+TITLE: Enable Cargo in Current Shell (Linux/macOS)
+DESCRIPTION: Sources the .cargo/env file to add Cargo to the system's PATH, making Rust tools available in the current terminal session.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: cargo,configuration:environment-variables,dev:source-build,development,language:rust
+CODE:
+```
+source $HOME/.cargo/env
+```
+----------------------------------------
+TITLE: Enable Cargo in Current Shell (Linux/macOS)
+DESCRIPTION: Sources the .cargo/env file to add Cargo to the system's PATH, making Rust tools available in the current terminal session.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: cargo,configuration:environment-variables,dev:source-build,development,language:rust
+CODE:
+```
+source $HOME/.cargo/env
+```
+----------------------------------------
+TITLE: Install a specific development wheel of NautilusTrader
+DESCRIPTION: This command allows installing a precise development wheel version of `nautilus_trader` from the Nautech Systems package index. This is useful for testing specific features or bug fixes from development branches by targeting a particular build.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:installation,dev:package-index,dev:package-management,dev:release-type:development,development,version
+CODE:
+```
+pip install nautilus_trader==1.208.0a20241212 --index-url=https://packages.nautechsystems.io/simple
+```
+----------------------------------------
+TITLE: Enable Standard-Precision Mode (64-bit) for NautilusTrader Build
+DESCRIPTION: This snippet demonstrates how to set the `HIGH_PRECISION` environment variable to `false` before running `make install-debug` to compile NautilusTrader with 64-bit standard-precision support.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: configuration:environment-variables,dev:build,dev:source-build,development,feature:64-bit,feature:standard-precision
+CODE:
+```
+export HIGH_PRECISION=false
+make install-debug
+```
+----------------------------------------
+TITLE: Enable High-Precision Mode for NautilusTrader Rust Crate
+DESCRIPTION: To enable 128-bit high-precision for the `nautilus_core` Rust crate, add the `high-precision` feature flag to its dependency entry in your `Cargo.toml` file as shown.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: toml
+KEYWORDS: Cargo.toml,dev:build,dev:source-build,development,feature flag,feature:128-bit,feature:high-precision,language:rust
+CODE:
+```
+[dependencies]
+nautilus_core = { version = "*", features = ["high-precision"] }
+```
+----------------------------------------
+TITLE: Install Clang on Linux
+DESCRIPTION: Installs the Clang C language frontend for LLVM using apt-get. Clang is required for compiling certain components of NautilusTrader.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: Linux,apt-get,clang,dev:installation,dev:source-build,development
+CODE:
+```
+sudo apt-get install clang
+```
+----------------------------------------
+TITLE: Install Clang on Linux
+DESCRIPTION: Installs the Clang C language frontend for LLVM using apt-get. Clang is required for compiling certain components of NautilusTrader.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: Linux,apt-get,clang,dev:installation,dev:source-build,development
+CODE:
+```
+sudo apt-get install clang
+```
+----------------------------------------
+TITLE: Enable Clang in Current Shell (Windows PowerShell)
+DESCRIPTION: Sets the system environment variable for the PATH to include the Clang tools directory, making Clang accessible from PowerShell.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: powershell
+KEYWORDS: PowerShell,Windows,clang,configuration:environment-variables,dev:source-build,development
+CODE:
+```
+[System.Environment]::SetEnvironmentVariable('path', "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\Llvm\x64\bin\;" + $env:Path,"User")
+```
+----------------------------------------
+TITLE: Enable Clang in Current Shell (Windows PowerShell)
+DESCRIPTION: Sets the system environment variable for the PATH to include the Clang tools directory, making Clang accessible from PowerShell.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: powershell
+KEYWORDS: PowerShell,Windows,clang,configuration:environment-variables,dev:source-build,development
+CODE:
+```
+[System.Environment]::SetEnvironmentVariable('path', "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\Llvm\x64\bin\;" + $env:Path,"User")
+```
+----------------------------------------
+TITLE: Programmatically list available NautilusTrader versions from package index
+DESCRIPTION: This `curl` and `grep` command pipeline retrieves and parses the HTML content of the Nautech Systems package index for `nautilus-trader`. It extracts and sorts all available version numbers, providing a programmatic way to view releases and development builds.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: dev:cli,dev:installation,dev:package-index,development,list,versions
+CODE:
+```
+curl -s https://packages.nautechsystems.io/simple/nautilus-trader/index.html | grep -oP '(?<=<a href="))[^"]+(?=")' | awk -F'#' '{print $1}' | sort
+```
+----------------------------------------
+TITLE: Verify Clang Installation
+DESCRIPTION: Checks the installed version of Clang to confirm successful installation and availability in the system's PATH.
+SOURCE: docs/getting_started/installation.md
+LANGUAGE: bash
+KEYWORDS: clang,dev:source-build,dev:verification,development
+CODE:
+```
+clang --version
+```

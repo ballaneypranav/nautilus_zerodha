@@ -1,0 +1,475 @@
+TITLE: Implement on_start Handler for Strategy Initialization in Nautilus Trader
+DESCRIPTION: This example demonstrates a typical `on_start` handler method implementation. It shows how to retrieve instrument details, register indicators for bar updates, request historical data, and subscribe to live bar and quote tick data. This method is crucial for setting up the strategy's initial state and data subscriptions.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: Python
+KEYWORDS: data handling,data subscription,data type:historical,data type:live,handler,handler:on_start,indicator,initialization,instrument,lifecycle,strategy
+CODE:
+```
+def on_start(self) -> None:
+    """
+    Actions to be performed on strategy start.
+    """
+    self.instrument = self.cache.instrument(self.instrument_id)
+    if self.instrument is None:
+        self.log.error(f"Could not find instrument for {self.instrument_id}")
+        self.stop()
+        return
+
+    # Register the indicators for updating
+    self.register_indicator_for_bars(self.bar_type, self.fast_ema)
+    self.register_indicator_for_bars(self.bar_type, self.slow_ema)
+
+    # Get historical data
+    self.request_bars(self.bar_type)
+
+    # Subscribe to live data
+    self.subscribe_bars(self.bar_type)
+    self.subscribe_quote_ticks(self.instrument_id)
+```
+----------------------------------------
+TITLE: Initialize a NautilusTrader Strategy Class
+DESCRIPTION: Demonstrates the minimal constructor implementation for a NautilusTrader strategy, inheriting from the `Strategy` class and ensuring the superclass is properly initialized.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: Python
+KEYWORDS: OOP,constructor,inheritance,strategy
+CODE:
+```
+from nautilus_trader.trading.strategy import Strategy
+
+class MyStrategy(Strategy):
+    def __init__(self) -> None:
+        super().__init__()  # <-- the superclass must be called to initialize the strategy
+```
+----------------------------------------
+TITLE: Cancel Individual Order in Python
+DESCRIPTION: This snippet demonstrates how to cancel a single, specific order. If the order is open, its status will change to PENDING_CANCEL.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: order management,order:cancel,strategy
+CODE:
+```
+self.cancel_order(order)
+```
+----------------------------------------
+TITLE: NautilusTrader Strategy Lifecycle Handlers
+DESCRIPTION: Defines the available lifecycle handler methods within the `Strategy` class, triggered by state changes. These methods allow for initialization, cleanup, and state management during the strategy's lifecycle.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: APIDOC
+KEYWORDS: documentation:API-reference,handler,handler:on_load,handler:on_save,handler:on_start,handler:on_stop,lifecycle,strategy
+CODE:
+```
+def on_start(self) -> None:
+def on_stop(self) -> None:
+def on_resume(self) -> None:
+def on_reset(self) -> None:
+def on_dispose(self) -> None:
+def on_degrade(self) -> None:
+def on_fault(self) -> None:
+def on_save(self) -> dict[str, bytes]:  # Returns user-defined dictionary of state to be saved
+def on_load(self, state: dict[str, bytes]) -> None:
+```
+----------------------------------------
+TITLE: Handle Data Updates in Nautilus Trader (Python)
+DESCRIPTION: These handlers receive data updates, including built-in market data and custom user-defined data. You can use these handlers to define actions upon receiving data object instances.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: documentation:API-reference,handler,handler:on_bar,handler:on_data,handler:on_order_book,handler:on_quote_tick,handler:on_signal,handler:on_trade_tick,strategy
+CODE:
+```
+from nautilus_trader.core import Data
+from nautilus_trader.model import OrderBook
+from nautilus_trader.model import Bar
+from nautilus_trader.model import QuoteTick
+from nautilus_trader.model import TradeTick
+from nautilus_trader.model import OrderBookDeltas
+from nautilus_trader.model import InstrumentClose
+from nautilus_trader.model import InstrumentStatus
+from nautilus_trader.model.instruments import Instrument
+
+def on_order_book_deltas(self, deltas: OrderBookDeltas) -> None:
+def on_order_book(self, order_book: OrderBook) -> None:
+def on_quote_tick(self, tick: QuoteTick) -> None:
+def on_trade_tick(self, tick: TradeTick) -> None:
+def on_bar(self, bar: Bar) -> None:
+def on_instrument(self, instrument: Instrument) -> None:
+def on_instrument_status(self, data: InstrumentStatus) -> None:
+def on_instrument_close(self, data: InstrumentClose) -> None:
+def on_historical_data(self, data: Data) -> None:
+def on_data(self, data: Data) -> None:  # Custom data passed to this handler
+def on_signal(self, signal: Data) -> None:  # Custom signals passed to this handler
+```
+----------------------------------------
+TITLE: Manage Order Events in Nautilus Trader (Python)
+DESCRIPTION: These handlers receive events related to orders. `OrderEvent` type messages are passed to handlers in the following sequence: first to a specific handler (e.g., `on_order_accepted`), then to `on_order_event(...)`, and finally to `on_event(...)`.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: documentation:API-reference,event handling,handler,handler:on_order_accepted,handler:on_order_canceled,handler:on_order_filled,order management,strategy
+CODE:
+```
+from nautilus_trader.model.events import OrderAccepted
+from nautilus_trader.model.events import OrderCanceled
+from nautilus_trader.model.events import OrderCancelRejected
+from nautilus_trader.model.events import OrderDenied
+from nautilus_trader.model.events import OrderEmulated
+from nautilus_trader.model.events import OrderEvent
+from nautilus_trader.model.events import OrderExpired
+from nautilus_trader.model.events import OrderFilled
+from nautilus_trader.model.events import OrderInitialized
+from nautilus_trader.model.events import OrderModifyRejected
+from nautilus_trader.model.events import OrderPendingCancel
+from nautilus_trader.model.events import OrderPendingUpdate
+from nautilus_trader.model.events import OrderRejected
+from nautilus_trader.model.events import OrderReleased
+from nautilus_trader.model.events import OrderSubmitted
+from nautilus_trader.model.events import OrderTriggered
+from nautilus_trader.model.events import OrderUpdated
+
+def on_order_initialized(self, event: OrderInitialized) -> None:
+def on_order_denied(self, event: OrderDenied) -> None:
+def on_order_emulated(self, event: OrderEmulated) -> None:
+def on_order_released(self, event: OrderReleased) -> None:
+def on_order_submitted(self, event: OrderSubmitted) -> None:
+def on_order_rejected(self, event: OrderRejected) -> None:
+def on_order_accepted(self, event: OrderAccepted) -> None:
+def on_order_canceled(self, event: OrderCanceled) -> None:
+def on_order_expired(self, event: OrderExpired) -> None:
+def on_order_triggered(self, event: OrderTriggered) -> None:
+def on_order_pending_update(self, event: OrderPendingUpdate) -> None:
+def on_order_pending_cancel(self, event: OrderPendingCancel) -> None:
+def on_order_modify_rejected(self, event: OrderModifyRejected) -> None:
+def on_order_cancel_rejected(self, event: OrderCancelRejected) -> None:
+def on_order_updated(self, event: OrderUpdated) -> None:
+def on_order_filled(self, event: OrderFilled) -> None:
+def on_order_event(self, event: OrderEvent) -> None:  # All order event messages are eventually passed to this handler
+```
+----------------------------------------
+TITLE: Modify Existing Trading Order in Nautilus Trader (Python)
+DESCRIPTION: This snippet demonstrates how to modify an existing trading order, specifically changing its quantity, within the Nautilus Trader framework. It highlights that orders can be modified if emulated or open on a venue, and explains that the order status becomes `PENDING_UPDATE`. A warning is logged if the order is closed or pending cancel, and at least one value must differ from the original for the modification to be valid.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: feature:pending-update,order management,order:modify,quantity,strategy
+CODE:
+```
+from nautilus_trader.model import Quantity
+
+
+new_quantity: Quantity = Quantity.from_int(5)
+self.modify_order(order, new_quantity)
+
+```
+----------------------------------------
+TITLE: Set a Time Alert to Trigger an Event in Nautilus Trader
+DESCRIPTION: This example illustrates how to set a one-time time alert using `clock.set_time_alert()`. The alert dispatches a `TimeEvent` to the `on_event` handler at the specified future time, useful for scheduling specific actions.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: Python
+KEYWORDS: TimeEvent,clock,handler:on_event,library:pandas,scheduling,strategy,timer
+CODE:
+```
+import pandas as pd
+
+# Fire a TimeEvent one minute from now
+self.clock.set_time_alert(
+    name="MyTimeAlert1",
+    alert_time=self.clock.utc_now() + pd.Timedelta(minutes=1),
+)
+```
+----------------------------------------
+TITLE: Define and Configure a Custom Trading Strategy in Nautilus Trader (Python)
+DESCRIPTION: This example illustrates how to define a custom strategy configuration class (`MyStrategyConfig`) and a trading strategy (`MyStrategy`) in Nautilus Trader. It emphasizes the flexibility provided by separate configuration, enabling serialization for distributed backtesting and remote live trading. The snippet shows how to define configuration parameters, initialize the strategy, subscribe to data, and access configuration values via `self.config`, promoting clear separation from strategy state variables.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: StrategyConfig,configuration,customization,handler:on_bar,handler:on_start,instrument,parameterization,strategy
+CODE:
+```
+from decimal import Decimal
+from nautilus_trader.config import StrategyConfig
+from nautilus_trader.model import Bar, BarType
+from nautilus_trader.model import InstrumentId
+from nautilus_trader.trading.strategy import Strategy
+
+
+# Configuration definition
+class MyStrategyConfig(StrategyConfig):
+    instrument_id: InstrumentId   # example value: "ETHUSDT-PERP.BINANCE"
+    bar_type: BarType             # example value: "ETHUSDT-PERP.BINANCE-15-MINUTE[LAST]-EXTERNAL"
+    fast_ema_period: int = 10
+    slow_ema_period: int = 20
+    trade_size: Decimal
+    order_id_tag: str
+
+
+# Strategy definition
+class MyStrategy(Strategy):
+    def __init__(self, config: MyStrategyConfig) -> None:
+        # Always initialize the parent Strategy class
+        # After this, configuration is stored and available via `self.config`
+        super().__init__(config)
+
+        # Custom state variables
+        self.time_started = None
+        self.count_of_processed_bars: int = 0
+
+    def on_start(self) -> None:
+        self.time_started = self.clock.utc_now()    # Remember time, when strategy started
+        self.subscribe_bars(self.config.bar_type)   # See how configuration data are exposed via `self.config`
+
+    def on_bar(self, bar: Bar):
+        self.count_of_processed_bars += 1           # Update count of processed bars
+
+
+# Instantiate configuration with specific values. By setting:
+#   - InstrumentId - we parameterize the instrument the strategy will trade.
+#   - BarType - we parameterize bar-data, that strategy will trade.
+config = MyStrategyConfig(
+    instrument_id=InstrumentId.from_str("ETHUSDT-PERP.BINANCE"),
+    bar_type=BarType.from_str("ETHUSDT-PERP.BINANCE-15-MINUTE[LAST]-EXTERNAL"),
+    trade_size=Decimal(1),
+    order_id_tag="001",
+)
+
+# Pass configuration to our trading strategy.
+strategy = MyStrategy(config=config)
+
+```
+----------------------------------------
+TITLE: Submit LIMIT BUY Order for Emulation in Python
+DESCRIPTION: This example demonstrates how to create and submit a LIMIT BUY order using the OrderFactory, specifying an emulation trigger. The order will first be sent to the OrderEmulator for processing.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: TriggerType,emulation,order management,order type:emulated,order type:limit,order:create,strategy
+CODE:
+```
+from nautilus_trader.model.enums import OrderSide
+from nautilus_trader.model.enums import TriggerType
+from nautilus_trader.model.orders import LimitOrder
+
+
+def buy(self) -> None:
+    """
+    Users simple buy method (example).
+    """
+    order: LimitOrder = self.order_factory.limit(
+        instrument_id=self.instrument_id,
+        order_side=OrderSide.BUY,
+        quantity=self.instrument.make_qty(self.trade_size),
+        price=self.instrument.make_price(5000.00),
+        emulation_trigger=TriggerType.LAST_PRICE,
+    )
+
+    self.submit_order(order)
+```
+----------------------------------------
+TITLE: Handle Position Events in Nautilus Trader (Python)
+DESCRIPTION: These handlers receive events related to positions. `PositionEvent` type messages are passed to handlers in the following sequence: first to a specific handler (e.g., `on_position_opened`), then to `on_position_event(...)`, and finally to `on_event(...)`.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: documentation:API-reference,event handling,handler,handler:on_position_changed,handler:on_position_closed,handler:on_position_opened,position,strategy
+CODE:
+```
+from nautilus_trader.model.events import PositionChanged
+from nautilus_trader.model.events import PositionClosed
+from nautilus_trader.model.events import PositionEvent
+from nautilus_trader.model.events import PositionOpened
+
+def on_position_opened(self, event: PositionOpened) -> None:
+def on_position_changed(self, event: PositionChanged) -> None:
+def on_position_closed(self, event: PositionClosed) -> None:
+def on_position_event(self, event: PositionEvent) -> None:  # All position event messages are eventually passed to this handler
+```
+----------------------------------------
+TITLE: Nautilus Trader Portfolio API Reference
+DESCRIPTION: This section outlines the methods available in the `Portfolio` object for accessing account and positional information. It includes functions to retrieve account details, locked balances, margins, PnLs, net exposures, and position status for specific instruments or the entire portfolio.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: APIDOC
+KEYWORDS: PnL,account,balance,documentation:API-reference,exposure,margin,portfolio,position
+CODE:
+```
+import decimal
+
+from nautilus_trader.accounting.accounts.base import Account
+from nautilus_trader.model import Venue
+from nautilus_trader.model import Currency
+from nautilus_trader.model import Money
+from nautilus_trader.model import InstrumentId
+
+def account(self, venue: Venue) -> Account
+
+def balances_locked(self, venue: Venue) -> dict[Currency, Money]
+def margins_init(self, venue: Venue) -> dict[Currency, Money]
+def margins_maint(self, venue: Venue) -> dict[Currency, Money]
+def unrealized_pnls(self, venue: Venue) -> dict[Currency, Money]
+def realized_pnls(self, venue: Venue) -> dict[Currency, Money]
+def net_exposures(self, venue: Venue) -> dict[Currency, Money]
+
+def unrealized_pnl(self, instrument_id: InstrumentId) -> Money
+def realized_pnl(self, instrument_id: InstrumentId) -> Money
+def net_exposure(self, instrument_id: InstrumentId) -> Money
+def net_position(self, instrument_id: InstrumentId) -> decimal.Decimal
+
+def is_net_long(self, instrument_id: InstrumentId) -> bool
+def is_net_short(self, instrument_id: InstrumentId) -> bool
+def is_flat(self, instrument_id: InstrumentId) -> bool
+def is_completely_flat(self) -> bool
+```
+----------------------------------------
+TITLE: Submit MARKET BUY Order to TWAP Algorithm in Python
+DESCRIPTION: This example shows how to submit a MARKET BUY order to a specific execution algorithm, in this case, a TWAP (Time-Weighted Average Price) algorithm. It includes parameters for the algorithm's horizon and interval.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: algorithm:TWAP,order management,order type:market,order:create,strategy
+CODE:
+```
+from nautilus_trader.model.enums import OrderSide
+from nautilus_trader.model.enums import TimeInForce
+from nautilus_trader.model import ExecAlgorithmId
+
+
+def buy(self) -> None:
+    """
+    Users simple buy method (example).
+    """
+    order: MarketOrder = self.order_factory.market(
+        instrument_id=self.instrument_id,
+        order_side=OrderSide.BUY,
+        quantity=self.instrument.make_qty(self.trade_size),
+        time_in_force=TimeInForce.FOK,
+        exec_algorithm_id=ExecAlgorithmId("TWAP"),
+        exec_algorithm_params={"horizon_secs": 20, "interval_secs": 2.5},
+    )
+
+    self.submit_order(order)
+```
+----------------------------------------
+TITLE: Set a Continuous Timer for Regular Events in Nautilus Trader
+DESCRIPTION: This example shows how to set up a continuous timer using `clock.set_timer()`. It generates `TimeEvent`s at regular intervals until it expires or is canceled, useful for periodic tasks within a strategy.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: Python
+KEYWORDS: TimeEvent,clock,continuous timer,library:pandas,scheduling,strategy,timer
+CODE:
+```
+import pandas as pd
+
+# Fire a TimeEvent every minute
+self.clock.set_timer(
+    name="MyTimer1",
+    interval=pd.Timedelta(minutes=1),
+)
+```
+----------------------------------------
+TITLE: Handle Generic Events in Nautilus Trader (Python)
+DESCRIPTION: This handler will eventually receive all event messages which arrive at the strategy, including those for which no other specific handler exists.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: event handling,generic event,handler,handler:on_event,strategy
+CODE:
+```
+from nautilus_trader.core.message import Event
+
+def on_event(self, event: Event) -> None:
+```
+----------------------------------------
+TITLE: Fetch Market Data from Nautilus Trader Cache
+DESCRIPTION: This example demonstrates how to retrieve the latest quote tick, trade tick, and bar data from the central `Cache` using instrument and bar type identifiers. The cache provides quick access to recent market data.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: Python
+KEYWORDS: QuoteTick,TradeTick,bar,cache,data type:market-data,data type:tick,query,strategy
+CODE:
+```
+last_quote = self.cache.quote_tick(self.instrument_id)
+last_trade = self.cache.trade_tick(self.instrument_id)
+last_bar = self.cache.bar(bar_type)
+```
+----------------------------------------
+TITLE: Cancel All Orders in Python
+DESCRIPTION: This snippet shows the method to cancel all active orders associated with the current context. This can be useful for quickly clearing all open positions.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: all,order management,order:cancel,strategy
+CODE:
+```
+self.cancel_all_orders()
+```
+----------------------------------------
+TITLE: Cancel Batch of Orders in Python
+DESCRIPTION: This example illustrates how to cancel multiple orders simultaneously by providing a list of Order objects to the cancellation method.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: python
+KEYWORDS: batch,list,order management,order:cancel,strategy
+CODE:
+```
+from nautilus_trader.model import Order
+
+
+my_order_list: list[Order] = [order1, order2, order3]
+self.cancel_orders(my_order_list)
+```
+----------------------------------------
+TITLE: Nautilus Trader Strategy Configuration for GTD Expiry
+DESCRIPTION: Details configuration parameters for managing Good 'til Date (GTD) order expiry within Nautilus Trader strategies, including how to enable internal management and avoid conflicts with exchange-supported GTD.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: APIDOC
+KEYWORDS: GTD,TimeInForce,configuration,documentation:API-reference,order expiry,strategy
+CODE:
+```
+StrategyConfig:
+  manage_gtd_expiry: bool
+    Description: If True, the strategy will internally manage GTD order expiry by canceling orders when the GTD time is reached.
+    Default: False
+
+ExecutionClientConfig:
+  use_gtd: bool
+    Description: If False, prevents the execution client from using exchange-supported GTD time in force, useful when strategy manages GTD expiry.
+    Default: True (implied, as it says "set use_gtd=False")
+```
+----------------------------------------
+TITLE: Get Current UTC Timestamp as UNIX Nanoseconds
+DESCRIPTION: This snippet demonstrates how to retrieve the current UTC timestamp as nanoseconds since the UNIX epoch using the `clock.timestamp_ns()` method. This provides a high-resolution integer timestamp.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: Python
+KEYWORDS: clock,nanoseconds,strategy,timestamp,unix
+CODE:
+```
+unix_nanos: int = self.clock.timestamp_ns()
+```
+----------------------------------------
+TITLE: Fetch Execution Objects (Orders, Positions) from Nautilus Trader Cache
+DESCRIPTION: This example illustrates how to fetch individual order and position objects from the central `Cache` using their respective IDs. The cache provides access to current execution state.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: Python
+KEYWORDS: cache,execution state,order,position,query,strategy
+CODE:
+```
+order = self.cache.order(client_order_id)
+position = self.cache.position(position_id)
+```
+----------------------------------------
+TITLE: Get Current UTC Timestamp as Pandas Timestamp
+DESCRIPTION: This snippet shows how to obtain the current UTC timestamp as a timezone-aware `pd.Timestamp` object using the `clock.utc_now()` method. It requires importing the pandas library.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: Python
+KEYWORDS: UTC,clock,library:pandas,strategy,timestamp
+CODE:
+```
+import pandas as pd
+
+
+now: pd.Timestamp = self.clock.utc_now()
+```
+----------------------------------------
+TITLE: Nautilus Trader Strategy Instance Identification
+DESCRIPTION: Explains the requirement for a unique `order_id_tag` when running multiple instances of the same strategy and how the `StrategyId` is constructed for internal system identification.
+SOURCE: docs/concepts/strategies.md
+LANGUAGE: APIDOC
+KEYWORDS: StrategyId,documentation:API-reference,multiple instances,order_id_tag,strategy
+CODE:
+```
+StrategyConfig:
+  order_id_tag: str
+    Description: A unique identifier tag for a strategy instance, used to differentiate multiple instances of the same strategy class.
+    Example: "001"
+
+StrategyId:
+  Description: A unique identifier for a strategy instance, composed of the strategy class name and its order_id_tag.
+  Format: "{StrategyClassName}-{order_id_tag}"
+  Example: "MyStrategy-001"
+```

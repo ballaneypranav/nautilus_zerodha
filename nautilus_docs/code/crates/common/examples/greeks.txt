@@ -1,0 +1,130 @@
+TITLE: Subscribing and Handling Greeks Data in a Rust Actor
+DESCRIPTION: This snippet demonstrates how an actor can subscribe to Greeks data for a specific underlying instrument using `subscribe_greeks`. It also shows how to implement the `on_data` method of the `DataActor` trait to receive and process incoming `GreeksData` messages, such as printing them to the console.
+SOURCE: crates/common/examples/greeks.md
+LANGUAGE: rust
+KEYWORDS: GreeksData,actor,data subscription,data type:custom,handler,handler:on_data,language:rust
+CODE:
+```
+impl MyActor {
+    pub fn subscribe_to_greeks(&self, underlying: &str) {
+        // Subscribe to greeks data
+        self.greeks_calculator.subscribe_greeks(underlying, None);
+    }
+}
+
+impl DataActor for MyActor {
+    fn on_start(&mut self) -> anyhow::Result<()> {
+        // Subscribe to greeks data for SPY
+        self.subscribe_to_greeks("SPY");
+        Ok(())
+    }
+
+    fn on_data(&mut self, data: &dyn std::any::Any) -> anyhow::Result<()> {
+        // Handle received data
+        if let Some(greeks_data) = data.downcast_ref::<GreeksData>() {
+            println!("Received greeks data: {:?}", greeks_data);
+        }
+        Ok(())
+    }
+}
+```
+----------------------------------------
+TITLE: Calculating Greeks for an Instrument in Rust
+DESCRIPTION: This example illustrates how to invoke the `instrument_greeks` method on the `GreeksCalculator` instance. It shows various parameters that can be passed, such as interest rate, shocks, caching options, and whether to publish the results to the message bus. The method returns `GreeksData`.
+SOURCE: crates/common/examples/greeks.md
+LANGUAGE: rust
+KEYWORDS: Greeks,GreeksCalculator,actor,calculation,instrument_greeks,language:rust
+CODE:
+```
+use nautilus_model::{
+    data::greeks::GreeksData,
+    identifiers::InstrumentId,
+};
+
+impl MyActor {
+    pub fn calculate_greeks(&self, instrument_id: InstrumentId) -> anyhow::Result<GreeksData> {
+        // Example parameters
+        let flat_interest_rate = 0.0425;
+        let flat_dividend_yield = None;
+        let spot_shock = 0.0;
+        let vol_shock = 0.0;
+        let time_to_expiry_shock = 0.0;
+        let use_cached_greeks = false;
+        let cache_greeks = true;
+        let publish_greeks = true;
+        let ts_event = self.core.clock.borrow().timestamp_ns();
+        let position = None;
+        let percent_greeks = false;
+        let index_instrument_id = None;
+        let beta_weights = None;
+
+        // Calculate greeks
+        self.greeks_calculator.instrument_greeks(
+            instrument_id,
+            Some(flat_interest_rate),
+            flat_dividend_yield,
+            Some(spot_shock),
+            Some(vol_shock),
+            Some(time_to_expiry_shock),
+            Some(use_cached_greeks),
+            Some(cache_greeks),
+            Some(publish_greeks),
+            Some(ts_event),
+            position,
+            Some(percent_greeks),
+            index_instrument_id,
+            beta_weights,
+        )
+    }
+}
+```
+----------------------------------------
+TITLE: Setting Up GreeksCalculator in a Rust Actor
+DESCRIPTION: This snippet demonstrates how to initialize the `GreeksCalculator` within a custom `MyActor` struct. It highlights the necessary dependencies like `Cache`, `Clock`, and `MessagingSwitchboard`, which are shared with the actor's core, ensuring consistent time and messaging.
+SOURCE: crates/common/examples/greeks.md
+LANGUAGE: rust
+KEYWORDS: Greeks,GreeksCalculator,actor,initialization,language:rust,setup
+CODE:
+```
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::Arc;
+
+use nautilus_common::{
+    actor::{
+        data_actor::{DataActor, DataActorConfig, DataActorCore},
+        Actor,
+    },
+    cache::Cache,
+    clock::LiveClock,
+    greeks::GreeksCalculator,
+    msgbus::MessagingSwitchboard,
+};
+
+struct MyActor {
+    core: DataActorCore,
+    greeks_calculator: GreeksCalculator,
+}
+
+impl MyActor {
+    pub fn new(
+        config: DataActorConfig,
+        cache: Rc<RefCell<Cache>>,
+        clock: Rc<RefCell<LiveClock>>,
+        switchboard: Arc<MessagingSwitchboard>,
+    ) -> Self {
+        let core = DataActorCore::new(config, cache.clone(), clock.clone(), switchboard.clone());
+
+        // Create the GreeksCalculator with the same clock and cache
+        let greeks_calculator = GreeksCalculator::new(
+            cache,
+            clock,
+        );
+
+        Self {
+            core,
+            greeks_calculator,
+        }
+    }
+}
+```

@@ -1,0 +1,10 @@
+TITLE: Installing and Configuring pre-commit (Bash)
+DESCRIPTION: This snippet provides the bash commands to install the `pre-commit` tool using pip and then configure it for the current repository. `pre-commit` automates code checks, formatters, and linters before each commit, ensuring code quality and consistency.
+SOURCE: CONTRIBUTING.md
+LANGUAGE: bash
+KEYWORDS: code quality,dev:environment,dev:installation,dev:tooling,development,git,pre-commit
+CODE:
+```
+pip install pre-commit
+pre-commit install
+```

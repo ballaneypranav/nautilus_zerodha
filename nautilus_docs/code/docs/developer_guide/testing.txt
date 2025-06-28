@@ -1,0 +1,69 @@
+TITLE: Running Python Tests with uv
+DESCRIPTION: This command uses `uv` to run `pytest` for the Python test suite. The `--active` flag ensures the active environment is used, `--no-sync` prevents package synchronization, and `--new-first --failed-first` prioritize newly added and previously failed tests.
+SOURCE: docs/developer_guide/testing.md
+LANGUAGE: bash
+KEYWORDS: dev:package-management,dev:testing,development,pytest
+CODE:
+```
+uv run --active --no-sync pytest --new-first --failed-first
+```
+----------------------------------------
+TITLE: Running Rust Tests with cargo nextest
+DESCRIPTION: This command executes Rust tests using `cargo nextest`, a faster test runner. It runs tests across the entire workspace (`--workspace`) and enables specific features (`python, ffi, high-precision, defi`) relevant for the build, using the `nextest` cargo profile.
+SOURCE: docs/developer_guide/testing.md
+LANGUAGE: bash
+KEYWORDS: cargo-nextest,dev:testing,development,features,language:rust,workspace
+CODE:
+```
+cargo nextest run --workspace --features "python,ffi,high-precision,defi" --cargo-profile nextest
+```
+----------------------------------------
+TITLE: Running Performance Tests with Make
+DESCRIPTION: This command uses `make` to execute the dedicated performance tests. It's a shortcut for running the performance test suite, often configured to include specific `pytest` flags for benchmarking.
+SOURCE: docs/developer_guide/testing.md
+LANGUAGE: bash
+KEYWORDS: codspeed,dev:testing,development,make,performance,pytest
+CODE:
+```
+make test-performance
+```
+----------------------------------------
+TITLE: Running Rust Tests with Make
+DESCRIPTION: This command uses `make` to execute the Rust test suite. It typically wraps the `cargo test` command, providing a consistent way to run all Rust tests within the project.
+SOURCE: docs/developer_guide/testing.md
+LANGUAGE: bash
+KEYWORDS: cargo test,dev:testing,development,language:rust,make,run
+CODE:
+```
+make cargo-test
+```
+----------------------------------------
+TITLE: Running Python Tests with Make
+DESCRIPTION: This command executes the Python test suite using the `make` utility, which typically wraps the `pytest` command. It's a convenient way to run all standard Python tests from the repository root.
+SOURCE: docs/developer_guide/testing.md
+LANGUAGE: bash
+KEYWORDS: dev:testing,development,make,pytest,run
+CODE:
+```
+make pytest
+```
+----------------------------------------
+TITLE: Directly Running Python Tests with pytest
+DESCRIPTION: This command directly invokes `pytest` to run the Python test suite. It assumes `pytest` is available in the current environment's PATH or virtual environment, providing the most straightforward way to execute tests.
+SOURCE: docs/developer_guide/testing.md
+LANGUAGE: bash
+KEYWORDS: dev:testing,development,pytest,run
+CODE:
+```
+pytest
+```
+----------------------------------------
+TITLE: Running Performance Tests with uv and pytest
+DESCRIPTION: This command uses `uv` to run `pytest` specifically on the `tests/performance_tests` directory. The `--benchmark-disable-gc` flag disables garbage collection during benchmarking, and `--codspeed` integrates with Codspeed for performance analysis.
+SOURCE: docs/developer_guide/testing.md
+LANGUAGE: bash
+KEYWORDS: benchmark,codspeed,dev:package-management,dev:testing,development,performance,pytest
+CODE:
+```
+uv run --active --no-sync pytest tests/performance_tests --benchmark-disable-gc --codspeed
+```

@@ -1,0 +1,49 @@
+TITLE: Python: Descriptive Naming for Test Methods
+DESCRIPTION: This snippet provides examples of the naming convention for test methods, which should be descriptive and clearly explain the scenario being tested. This improves test readability and maintainability.
+SOURCE: docs/developer_guide/coding_standards.md
+LANGUAGE: python
+KEYWORDS: dev:coding-standards,dev:testing,development,naming conventions
+CODE:
+```
+def test_currency_with_negative_precision_raises_overflow_error(self):
+def test_sma_with_no_inputs_returns_zero_count(self):
+def test_sma_with_single_input_returns_expected_value(self):
+```
+----------------------------------------
+TITLE: Python: Mandatory Type Hints for Function and Method Signatures
+DESCRIPTION: This snippet illustrates the requirement for comprehensive type annotations in all Python function and method signatures within the codebase. This ensures clarity, improves static analysis, and helps maintain code quality.
+SOURCE: docs/developer_guide/coding_standards.md
+LANGUAGE: python
+KEYWORDS: annotations,dev:best-practice,dev:coding-standards,development,type hints
+CODE:
+```
+def __init__(self, config: EMACrossConfig) -> None:
+def on_bar(self, bar: Bar) -> None:
+def on_save(self) -> dict[str, bytes]:
+def on_load(self, state: dict[str, bytes]) -> None:
+```
+----------------------------------------
+TITLE: Python: Using TypeVar for Generic Types in Classes
+DESCRIPTION: This snippet shows how to define and use generic types with `TypeVar` in Python. This pattern is used for creating reusable components that can operate on different types, enhancing flexibility and type safety.
+SOURCE: docs/developer_guide/coding_standards.md
+LANGUAGE: python
+KEYWORDS: TypeVar,dev:best-practice,dev:coding-standards,development,generics
+CODE:
+```
+T = TypeVar("T")
+class ThrottledEnqueuer(Generic[T]):
+```
+----------------------------------------
+TITLE: Python: Formatting Long Method Parameters with Trailing Comma
+DESCRIPTION: This snippet demonstrates the recommended formatting for Python methods with many parameters. Each parameter is placed on a new line, aligned at the next logical indent, and the last parameter includes a trailing comma for consistency and robustness to changes.
+SOURCE: docs/developer_guide/coding_standards.md
+LANGUAGE: python
+KEYWORDS: dev:best-practice,dev:coding-standards,development,formatting
+CODE:
+```
+long_method_with_many_params(
+    some_arg1,
+    some_arg2,
+    some_arg3,  # <-- trailing comma
+)
+```

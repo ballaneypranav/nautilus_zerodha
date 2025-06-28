@@ -1,0 +1,243 @@
+TITLE: Configure Nautilus TradingNode with Bybit Data and Execution Clients
+DESCRIPTION: Demonstrates how to configure a Nautilus `TradingNode` to integrate Bybit data and execution clients, specifying API keys, secrets, base URLs, and product types (e.g., LINEAR) for both data and execution services.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: Python
+KEYWORDS: Bybit,TradingNodeConfig,API credentials,client:data,client:execution,configuration,integration,live trading
+CODE:
+```
+from nautilus_trader.adapters.bybit import BYBIT
+from nautilus_trader.adapters.bybit import BybitProductType
+from nautilus_trader.live.node import TradingNode
+
+config = TradingNodeConfig(
+    ...,  # Omitted
+    data_clients={
+        BYBIT: {
+            "api_key": "YOUR_BYBIT_API_KEY",
+            "api_secret": "YOUR_BYBIT_API_SECRET",
+            "base_url_http": None,  # Override with custom endpoint
+            "product_types": [BybitProductType.LINEAR]
+            "testnet": False,
+        },
+    },
+    exec_clients={
+        BYBIT: {
+            "api_key": "YOUR_BYBIT_API_KEY",
+            "api_secret": "YOUR_BYBIT_API_SECRET",
+            "base_url_http": None,  # Override with custom endpoint
+            "product_types": [BybitProductType.LINEAR]
+            "testnet": False,
+        },
+    },
+)
+```
+----------------------------------------
+TITLE: Install NautilusTrader with Bybit Support via pip
+DESCRIPTION: This command installs or upgrades the NautilusTrader library, including the necessary dependencies for Bybit integration, allowing access to Bybit-specific functionalities.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: bash
+KEYWORDS: Bybit,dev:extras,dev:installation,dev:package-management,development,integration
+CODE:
+```
+pip install --upgrade "nautilus_trader[bybit]"
+```
+----------------------------------------
+TITLE: Nautilus Trader Bybit Execution Client Configuration Options
+DESCRIPTION: Lists key configuration options for Nautilus Trader's Bybit execution client, detailing their default values and impact on order behavior, such as WebSocket usage, batch API, leverage, and position/margin modes.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: Bybit,client:execution,configuration,documentation:API-reference,integration,leverage,margin mode,position mode
+CODE:
+```
+| Option                       | Default | Description                                          |
+|------------------------------|---------|------------------------------------------------------|
+| `use_gtd`                    | `False` | GTD is not supported; orders are remapped to GTC for local management. |
+| `use_ws_trade_api`           | `False` | If `True`, uses WebSocket for order requests instead of HTTP. |
+| `use_http_batch_api`         | `False` | If `True`, uses HTTP batch API when WebSocket trading is enabled. |
+| `futures_leverages`          | `None`  | Dict to set leverage for futures symbols.            |
+| `position_mode`              | `None`  | Dict to set position mode for USDT perpetual and inverse futures. |
+| `margin_mode`                | `None`  | Sets margin mode for the account.                    |
+```
+----------------------------------------
+TITLE: Bybit Advanced Order Features Overview
+DESCRIPTION: Summarizes advanced order features available on Bybit for Spot, Linear, and Inverse products, including support for order modification, bracket/OCO orders, and iceberg orders, along with specific notes and limitations.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: Bybit,documentation:API-reference,feature:advanced-orders,integration,order modification
+CODE:
+```
+| Feature            | Spot | Linear | Inverse | Notes                                  |
+|--------------------|------|--------|---------|----------------------------------------|
+| Order Modification | ✓    | ✓      | ✓       | Price and quantity modification.       |
+| Bracket/OCO Orders | ✓    | ✓      | ✓       | UI only; API users implement manually. |
+| Iceberg Orders     | ✓    | ✓      | ✓       | Max 10 per account, 1 per symbol.      |
+```
+----------------------------------------
+TITLE: Bybit Product Symbology in NautilusTrader
+DESCRIPTION: NautilusTrader uses specific suffixes appended to Bybit raw symbols to differentiate between various product types (Spot, Perpetual, Futures, Inverse). This ensures correct identification and handling of instruments within the trading system, enabling precise order routing and data interpretation.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: Bybit,documentation:API-reference,instrument ID,integration,inverse,linear,product type,spot,symbology
+CODE:
+```
+Suffixes for Bybit Product Categories:
+  -SPOT: Spot cryptocurrencies (e.g., ETHUSDT-SPOT)
+  -LINEAR: Perpetual and futures contracts (e.g., BTCUSDT-LINEAR)
+  -INVERSE: Inverse perpetual and inverse futures contracts (e.g., BTCUSD-INVERSE)
+  -OPTION: Options contracts (not currently supported)
+```
+----------------------------------------
+TITLE: NautilusTrader Bybit Adapter Components Overview
+DESCRIPTION: This section outlines the core components of the Bybit adapter within NautilusTrader, detailing their specific roles in handling HTTP/WebSocket connectivity, instrument parsing, market data feeds, and trade execution. Most users will interact with these via higher-level configurations rather than directly.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: Bybit,HTTP client,InstrumentProvider,WebSocket,adapters,components,documentation:API-reference,integration
+CODE:
+```
+BybitHttpClient: Low-level HTTP API connectivity.
+BybitWebSocketClient: Low-level WebSocket API connectivity.
+BybitInstrumentProvider: Instrument parsing and loading functionality.
+BybitDataClient: A market data feed manager.
+BybitExecutionClient: An account management and trade execution gateway.
+BybitLiveDataClientFactory: Factory for Bybit data clients (used by the trading node builder).
+BybitLiveExecClientFactory: Factory for Bybit execution clients (used by the trading node builder).
+```
+----------------------------------------
+TITLE: Instantiate and Build Nautilus TradingNode with Bybit Client Factories
+DESCRIPTION: Illustrates the process of instantiating a Nautilus `TradingNode` with a predefined configuration and registering Bybit live data and execution client factories, followed by building the node to activate the integration.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: Python
+KEYWORDS: Bybit,TradingNode,client:factory,configuration,dev:build,development,integration,live trading
+CODE:
+```
+from nautilus_trader.adapters.bybit import BYBIT
+from nautilus_trader.adapters.bybit import BybitLiveDataClientFactory
+from nautilus_trader.adapters.bybit import BybitLiveExecClientFactory
+from nautilus_trader.live.node import TradingNode
+
+# Instantiate the live trading node with a configuration
+node = TradingNode(config=config)
+
+# Register the client factories with the node
+node.add_data_client_factory(BYBIT, BybitLiveDataClientFactory)
+node.add_exec_client_factory(BYBIT, BybitLiveExecClientFactory)
+
+# Finally build the node
+node.build()
+```
+----------------------------------------
+TITLE: Bybit SPOT Product Limitations in Nautilus Trader
+DESCRIPTION: Highlights specific limitations for SPOT products within Nautilus Trader's Bybit integration, noting that `reduce_only` orders and trailing stop orders are not supported due to positions not being tracked on the venue side.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: Bybit,documentation:API-reference,integration,limitations,reduce_only,spot,trailing stop order
+CODE:
+```
+The following limitations apply to SPOT products, as positions are not tracked on the venue side:
+
+- `reduce_only` orders are *not supported*.
+- Trailing stop orders are *not supported*.
+```
+----------------------------------------
+TITLE: Bybit API Credential Configuration
+DESCRIPTION: Explains how to provide API keys and secrets for Bybit clients (live, demo, testnet) in the Nautilus Trader project, recommending environment variables for secure management.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: API credentials,Bybit,configuration,configuration:environment-variables,demo,documentation:API-reference,integration,live,security,testnet
+CODE:
+```
+API Credential Configuration for Bybit Clients:
+
+Methods for Supplying Credentials:
+1. Direct Configuration:
+   - Pass 'api_key' and 'api_secret' values to configuration objects.
+2. Environment Variables (Recommended):
+   - Set specific environment variables based on the Bybit client type.
+
+Environment Variables:
+- Bybit Live Clients:
+  - BYBIT_API_KEY
+  - BYBIT_API_SECRET
+- Bybit Demo Clients:
+  - BYBIT_DEMO_API_KEY
+  - BYBIT_DEMO_API_SECRET
+- Bybit Testnet Clients:
+  - BYBIT_TESTNET_API_KEY
+  - BYBIT_TESTNET_API_SECRET
+
+Validation:
+- Credentials are validated upon trading node startup for validity and trading permissions.
+```
+----------------------------------------
+TITLE: Bybit Supported Execution Instructions in NautilusTrader
+DESCRIPTION: This table outlines the execution instructions available for orders placed via NautilusTrader on Bybit, specifying their compatibility with Spot, Linear, and Inverse product types. These instructions modify order behavior, such as 'post_only' for limit orders or 'reduce_only' for derivatives, enhancing trading flexibility.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: Bybit,documentation:API-reference,execution instructions,integration,post_only,reduce_only
+CODE:
+```
+Instruction   | Spot | Linear | Inverse | Notes
+---------------|------|--------|---------|-----------------------------------
+post_only   | ✓    | ✓      | ✓       | Only supported on LIMIT orders.
+reduce_only | -    | ✓      | ✓       | Not supported for Spot products.
+```
+----------------------------------------
+TITLE: Bybit Supported Time-in-Force Options in NautilusTrader
+DESCRIPTION: This table presents the time-in-force options supported by Bybit through NautilusTrader, indicating their applicability across different product categories. These options dictate how long an order remains active before being canceled, with 'Good Till Canceled', 'Fill or Kill', and 'Immediate or Cancel' being available.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: Bybit,FOK,GTC,IOC,TimeInForce,documentation:API-reference,integration
+CODE:
+```
+Time-in-Force | Spot | Linear | Inverse | Notes
+---------------|------|--------|---------|------------------------------
+GTC         | ✓    | ✓      | ✓       | Good Till Canceled.
+GTD         | -    | -      | -       | Not supported.
+FOK         | ✓    | ✓      | ✓       | Fill or Kill.
+IOC         | ✓    | ✓      | ✓       | Immediate or Cancel.
+```
+----------------------------------------
+TITLE: Bybit Supported Order Types in NautilusTrader
+DESCRIPTION: This table details the various order types supported by Bybit through NautilusTrader, indicating their availability across Spot, Linear, and Inverse product categories. All listed order types can function as entries or exits, except for trailing stops which utilize a position-related API.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: Bybit,documentation:API-reference,integration,inverse,linear,order types,spot,supported features
+CODE:
+```
+Order Type             | Spot | Linear | Inverse | Notes
+------------------------|------|--------|---------|--------------------------
+MARKET               | ✓    | ✓      | ✓       |
+LIMIT                | ✓    | ✓      | ✓       |
+STOP_MARKET          | ✓    | ✓      | ✓       |
+STOP_LIMIT           | ✓    | ✓      | ✓       |
+MARKET_IF_TOUCHED    | ✓    | ✓      | ✓       |
+LIMIT_IF_TOUCHED     | ✓    | ✓      | ✓       |
+TRAILING_STOP_MARKET | -    | ✓      | ✓       | Not supported for Spot.
+```
+----------------------------------------
+TITLE: Bybit Trailing Stop Order Behavior and Considerations
+DESCRIPTION: Explains the behavior of trailing stop orders on Bybit, noting their lack of a client order ID, association with netted positions, automatic deactivation upon position closure, query limitations, and manual adjustment options.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: APIDOC
+KEYWORDS: Bybit,behavior,documentation:API-reference,integration,limitations,order type:trailing-stop,position
+CODE:
+```
+Trailing stops on Bybit do not have a client order ID on the venue side (though there is a `venue_order_id`).
+This is because trailing stops are associated with a netted position for an instrument.
+Consider the following points when using trailing stops on Bybit:
+
+- `reduce_only` instruction is available
+- When the position associated with a trailing stop is closed, the trailing stop is automatically "deactivated" (closed) on the venue side
+- You cannot query trailing stop orders that are not already open (the `venue_order_id` is unknown until then)
+- You can manually adjust the trigger price in the GUI, which will update the Nautilus order
+```
+----------------------------------------
+TITLE: Build NautilusTrader from Source with Bybit Support
+DESCRIPTION: This command builds NautilusTrader from its source code, ensuring all extra dependencies, including those required for Bybit integration, are synchronized and available for development or deployment.
+SOURCE: docs/integrations/bybit.md
+LANGUAGE: bash
+KEYWORDS: Bybit,dev:build,dev:extras,dev:installation,dev:source-build,development,integration
+CODE:
+```
+uv sync --all-extras
+```

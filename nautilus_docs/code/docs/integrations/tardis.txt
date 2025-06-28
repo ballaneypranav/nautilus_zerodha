@@ -1,0 +1,430 @@
+TITLE: Run Tardis Machine Docker Container
+DESCRIPTION: Command to start the Tardis Machine server without a persistent local cache. It exposes ports 8000 and 8001 and sets the `TM_API_KEY` environment variable.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: bash
+KEYWORDS: API credentials,Tardis,integration,run,tech:docker,technology
+CODE:
+```
+docker run -p 8000:8000 -p 8001:8001 -e "TM_API_KEY=YOUR_API_KEY" -d tardisdev/tardis-machine
+```
+----------------------------------------
+TITLE: Tardis Instruments Metadata API Reference
+DESCRIPTION: This section describes the `TardisHttpClient` for requesting instrument definitions from the Tardis instruments metadata API. It outlines constructor parameters like `api_key`, `base_url`, and `timeout_secs`, and mentions methods for retrieving specific or all instruments.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: APIDOC
+KEYWORDS: HTTP client,Tardis,documentation:API-reference,instrument,integration,metadata
+CODE:
+```
+TardisHttpClient:
+  __init__(api_key: Optional[str] = None, base_url: str = 'https://api.tardis.dev/v1', timeout_secs: int = 60)
+    api_key: Your Tardis API key (required for access).
+    base_url: The base URL for the Tardis API (defaults to 'https://api.tardis.dev/v1').
+    timeout_secs: The request timeout in seconds (defaults to 60).
+
+  Methods:
+    get_instrument(exchange: str, symbol: str) -> Instrument
+      exchange: The Tardis-supported exchange in lower-kebab casing (e.g., 'deribit').
+      symbol: The instrument symbol (e.g., 'BTC-PERPETUAL').
+      Returns: An Instrument object.
+
+    get_instruments(exchange: str) -> List[Instrument]
+      exchange: The Tardis-supported exchange in lower-kebab casing.
+      Returns: A list of Instrument objects available on the specified exchange.
+```
+----------------------------------------
+TITLE: TardisDataClient Live Data Subscriptions API
+DESCRIPTION: The `TardisDataClient` facilitates integration with a Tardis Machine for live data. It supports subscriptions to various data types including `OrderBookDelta`, `OrderBookDepth10`, `QuoteTick`, `TradeTick`, and `Bar`.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: APIDOC
+KEYWORDS: Bar,OrderBookDelta,QuoteTick,TradeTick,Tardis,client:data,data subscription,data type:live,documentation:API-reference,integration
+CODE:
+```
+TardisDataClient:
+  Purpose: Enables integration of a Tardis Machine with a running NautilusTrader system.
+  Supported Data Types:
+    - OrderBookDelta (L2 granularity from Tardis, includes all changes or full-depth snapshots)
+    - OrderBookDepth10 (L2 granularity, provides snapshots up to 10 levels)
+    - QuoteTick
+    - TradeTick
+    - Bar (trade bars with Tardis-supported bar aggregations)
+```
+----------------------------------------
+TITLE: Requesting Instrument Definitions in Rust
+DESCRIPTION: This Rust example illustrates how to use the `TardisHttpClient` to fetch instrument definitions from Tardis. It demonstrates initializing the client and making asynchronous calls to retrieve all instruments for an exchange or a specific instrument by ID.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: rust
+KEYWORDS: Tardis,async,instrument,integration,language:rust,tech:http-client,technology,tokio
+CODE:
+```
+use nautilus_adapters::tardis::{enums::Exchange, http::client::TardisHttpClient};
+
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
+
+    let client = TardisHttpClient::new(None, None, None).unwrap();
+
+    // Nautilus instrument definitions
+    let resp = client.instruments(Exchange::Bitmex).await;
+    println!("Received: {resp:?}");
+
+    let resp = client.instrument(Exchange::Bitmex, "ETHUSDT").await;
+    println!("Received: {resp:?}");
+}
+```
+----------------------------------------
+TITLE: Requesting Instrument Definitions in Python
+DESCRIPTION: This Python example demonstrates how to use the `TardisHttpClient` to asynchronously request single or multiple instrument definitions from Tardis. It shows how to initialize the client and retrieve instrument data for a specified exchange.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: python
+KEYWORDS: Tardis,async,instrument,integration,pyo3,tech:http-client,technology
+CODE:
+```
+import asyncio
+
+from nautilus_trader.core import nautilus_pyo3
+
+
+async def run():
+    http_client = nautilus_pyo3.TardisHttpClient()
+
+    instrument = await http_client.instrument("bitmex", "xbtusd")
+    print(f"Received: {instrument}")
+
+    instruments = await http_client.instruments("bitmex")
+    print(f"Received: {len(instruments)} instruments")
+
+
+if __name__ == "__main__":
+    asyncio.run(run())
+```
+----------------------------------------
+TITLE: Configuring Tardis Instrument Provider to Load Specific Instruments by ID in Python
+DESCRIPTION: This Python snippet demonstrates how to configure the `InstrumentProviderConfig` to load specific instrument definitions by their `InstrumentId`. It illustrates how to create a list of `InstrumentId` objects for targeted instrument loading.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: python
+KEYWORDS: InstrumentProviderConfig,Tardis,configuration,instrument provider,integration,load by ID
+CODE:
+```
+from nautilus_trader.config import InstrumentProviderConfig
+
+instrument_ids = [
+    InstrumentId.from_str("BTCUSDT-PERP.BINANCE"),  # Will use the 'binance-futures' exchange
+    InstrumentId.from_str("BTCUSDT.BINANCE"),  # Will use the 'binance' exchange
+]
+instrument_provider_config = InstrumentProviderConfig(load_ids=instrument_ids)
+```
+----------------------------------------
+TITLE: Run Historical Data Replay in Python
+DESCRIPTION: This snippet demonstrates how to set up and run a historical data replay using `nautilus_pyo3` in Python. It requires a configuration file path to initiate the replay process asynchronously.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: python
+KEYWORDS: Tardis,async,data type:historical,integration,pyo3,replay,run
+CODE:
+```
+import asyncio
+
+from nautilus_trader.core import nautilus_pyo3
+
+
+async def run():
+    config_filepath = Path("YOUR_CONFIG_FILEPATH")
+    await nautilus_pyo3.run_tardis_machine_replay(str(config_filepath.resolve()))
+
+
+if __name__ == "__main__":
+    asyncio.run(run())
+```
+----------------------------------------
+TITLE: NautilusTrader Venue to Tardis Exchange Mappings
+DESCRIPTION: Provides a comprehensive mapping table detailing how NautilusTrader venues correspond to specific Tardis exchanges. This helps in understanding the partitioning of exchanges on Tardis into multiple Nautilus venues.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: APIDOC
+KEYWORDS: Tardis,documentation:API-reference,exchange,integration,mapping,symbology,venue
+CODE:
+```
+Nautilus venue | Tardis exchange(s)
+-------------------------|-----------------------------------------------------
+`ASCENDEX`              | `ascendex`
+`BINANCE`               | `binance`, `binance-dex`, `binance-futures`, `binance-jersey`, `binance-options`, `binance-us`
+`BINANCE_DELIVERY`      | `binance-delivery` (*COIN-margined contracts*)
+`BINANCE_US`            | `binance-us`
+`BITFINEX`              | `bitfinex`, `bitfinex-derivatives`
+`BITFLYER`              | `bitflyer`
+`BITMEX`                | `bitmex`
+`BITNOMIAL`             | `bitnomial`
+`BITSTAMP`              | `bitstamp`
+`BLOCKCHAIN_COM`        | `blockchain-com`
+`BYBIT`                 | `bybit`, `bybit-options`, `bybit-spot`
+`COINBASE`              | `coinbase`
+`COINFLEX`              | `coinflex` (*for historical research*)
+`CRYPTO_COM`            | `crypto-com`
+`CRYPTOFACILITIES`      | `cryptofacilities`
+`DELTA`                 | `delta`
+`DERIBIT`               | `deribit`
+`DYDX`                  | `dydx`
+`FTX`                   | `ftx` (*historical research*)
+`FTX_US`                | `ftx-us` (*historical research*)
+`GATE_IO`               | `gate-io`, `gate-io-futures`
+`GEMINI`                | `gemini`
+`HITBTC`                | `hitbtc`
+`HUOBI`                 | `huobi`, `huobi-dm`, `huobi-dm-linear-swap`, `huobi-dm-options`
+`HUOBI_DELIVERY`        | `huobi-dm-swap`
+`KRAKEN`                | `kraken`
+`KUCOIN`                | `kucoin`
+`MANGO`                 | `mango`
+`OKCOIN`                | `okcoin`
+`OKEX`                  | `okex`, `okex-futures`, `okex-options`, `okex-swap`
+`PHEMEX`                | `phemex`
+`POLONIEX`              | `poloniex`
+`SERUM`                 | `serum` (*historical research*)
+`STARATLAS`             | `staratlas`
+`UPBIT`                 | `upbit`
+`WOO_X`                 | `woo-x`
+```
+----------------------------------------
+TITLE: Load Tardis CSV Data in Rust
+DESCRIPTION: This example demonstrates loading Tardis-format CSV data in Rust using `nautilus_adapters::tardis::csv`. It requires specifying price and size precisions, and optionally an instrument ID and a limit for the number of rows.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: rust
+KEYWORDS: CSV,Tardis,data format,data handling,data:loading,delta,integration,language:rust
+CODE:
+```
+use std::path::Path;
+
+use nautilus_adapters::tardis;
+use nautilus_model::identifiers::InstrumentId;
+
+#[tokio::main]
+async fn main() {
+    // You must specify precisions and the CSV filepath
+    let price_precision = 1;
+    let size_precision = 0;
+    let filepath = Path::new("YOUR_CSV_DATA_PATH");
+
+    // Optionally specify an instrument ID and/or limit
+    let instrument_id = InstrumentId::from("BTC-PERPETUAL.DERIBIT");
+    let limit = None;
+
+    // Consider propagating any parsing error depending on your workflow
+    let _deltas = tardis::csv::load_deltas(
+        filepath,
+        price_precision,
+        size_precision,
+        Some(instrument_id),
+        limit,
+    )
+    .unwrap();
+}
+```
+----------------------------------------
+TITLE: Configuring Tardis Instrument Provider to Load All Instruments by Venue in Python
+DESCRIPTION: This Python snippet shows how to configure the `InstrumentProviderConfig` to load all instrument definitions for specific venues from Tardis. It uses a `frozenset` of venue names to filter the instruments loaded.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: python
+KEYWORDS: InstrumentProviderConfig,Tardis,configuration,instrument provider,integration,load all,venue filter
+CODE:
+```
+from nautilus_trader.config import InstrumentProviderConfig
+
+# See supported venues https://nautilustrader.io/docs/nightly/integrations/tardis#venues
+venues = {"BINANCE", "BYBIT"}
+filters = {"venues": frozenset(venues)}
+instrument_provider_config = InstrumentProviderConfig(load_all=True, filters=filters)
+```
+----------------------------------------
+TITLE: Load Tardis CSV Data in Python
+DESCRIPTION: This snippet illustrates how to load Tardis-format CSV data using `TardisCSVDataLoader` in Python. It requires specifying price and size precisions, and optionally an instrument ID for improved performance.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: python
+KEYWORDS: CSV,Tardis,TardisCSVDataLoader,data format,data handling,data:loading,delta,integration
+CODE:
+```
+from nautilus_trader.adapters.tardis import TardisCSVDataLoader
+from nautilus_trader.model import InstrumentId
+
+
+instrument_id = InstrumentId.from_str("BTC-PERPETUAL.DERIBIT")
+loader = TardisCSVDataLoader(
+    price_precision=1,
+    size_precision=0,
+    instrument_id=instrument_id,
+)
+
+filepath = Path("YOUR_CSV_DATA_PATH")
+limit = None
+
+deltas = loader.load_deltas(filepath, limit)
+```
+----------------------------------------
+TITLE: Tardis Integration Limitations and Considerations
+DESCRIPTION: This section outlines known limitations and important considerations for the Tardis integration, specifically noting that historical data requests are not supported due to practical and efficiency concerns.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: APIDOC
+KEYWORDS: Tardis,documentation:API-reference,historical data,integration,limitations
+CODE:
+```
+Limitations and Considerations:
+  - Historical Data: Not supported. Each request would require a minimum one-day replay from the Tardis Machine, which is neither practical nor efficient.
+```
+----------------------------------------
+TITLE: Example Tardis Machine Replay Configuration
+DESCRIPTION: An example JSON configuration file demonstrating how to specify the Tardis Machine WebSocket URL, output path, and replay options for specific exchanges, symbols, data types, and time ranges.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: json
+KEYWORDS: Tardis,configuration,data type:historical,integration,json,replay
+CODE:
+```
+{
+  "tardis_ws_url": "ws://localhost:8001",
+  "output_path": null,
+  "options": [
+    {
+      "exchange": "bitmex",
+      "symbols": [
+        "xbtusd",
+        "ethusd"
+      ],
+      "data_types": [
+        "trade"
+      ],
+      "from": "2019-10-01",
+      "to": "2019-10-02"
+    }
+  ]
+}
+```
+----------------------------------------
+TITLE: TardisMachineClient Data WebSockets Behavior
+DESCRIPTION: The `TardisMachineClient` manages data WebSocket subscriptions. Initial subscriptions are handled by a main WebSocket for performance, while subsequent subscriptions create new clients. Unsubscribing from initial streams does not remove them from the Tardis Machine stream due to Tardis limitations, but message bus publishing stops.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: APIDOC
+KEYWORDS: Tardis,WebSocket,behavior,data subscription,data type:live,documentation:API-reference,integration
+CODE:
+```
+TardisMachineClient Data WebSockets:
+  - Initial Subscriptions: Managed by main TardisMachineClient data WebSocket during initial connection phase (up to `ws_connection_delay_secs`). Optimizes performance for many subscriptions at startup.
+  - Subsequent Subscriptions: After initial delay, a new TardisMachineClient is created for each additional subscription.
+  - Unsubscription Behavior:
+    - Initial Streams: Unsubscribing does not remove the subscription from the Tardis Machine stream (due to Tardis limitation), but the component unsubscribes from message bus publishing.
+    - Post-delay Streams: Fully unsubscribes from the Tardis Machine stream when requested.
+  - Recommendation: Set `ws_connection_delay_secs` to zero for frequent subscription/unsubscription to allow individual client closure.
+```
+----------------------------------------
+TITLE: Map Tardis Trade Bar Suffixes to NautilusTrader Bar Aggregation Types
+DESCRIPTION: This table specifies how different aggregation suffixes used in Tardis trade bar formats are converted into NautilusTrader's `BarType` enumerations. This conversion allows NautilusTrader to correctly interpret and process aggregated trade data from Tardis, ensuring compatibility for various time and tick-based bars.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: APIDOC
+KEYWORDS: Tardis,bar,data:aggregation,documentation:API-reference,integration,mapping,symbology
+CODE:
+```
+Tardis suffix -> Nautilus bar aggregation
+ms (milliseconds) -> MILLISECOND
+s (seconds) -> SECOND
+m (minutes) -> MINUTE
+ticks (number of ticks) -> TICK
+vol (volume size) -> VOLUME
+```
+----------------------------------------
+TITLE: Tardis Machine Replay Configuration Schema
+DESCRIPTION: Defines the structure for the JSON configuration file used by the `run_tardis_machine_replay` function, specifying parameters like WebSocket URL, symbol normalization, output path, and replay options.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: APIDOC
+KEYWORDS: Tardis,configuration,documentation:API-reference,integration,json,replay,schema
+CODE:
+```
+Configuration JSON format:
+  tardis_ws_url: string (optional)
+    Description: The Tardis Machine WebSocket URL.
+    Default: If `null` then will use the `TARDIS_WS_URL` env var.
+  normalize_symbols: bool (optional)
+    Description: If Nautilus symbol normalization should be applied.
+    Default: If `null` then will default to `true`.
+  output_path: string (optional)
+    Description: The output directory path to write Nautilus Parquet data to.
+    Default: If `null` then will use the `NAUTILUS_CATALOG_PATH` env var, otherwise the current working directory.
+  options: JSON[]
+    Description: An array of ReplayNormalizedRequestOptions objects.
+```
+----------------------------------------
+TITLE: NautilusTrader Symbology Normalization Rules
+DESCRIPTION: Outlines the common and exchange-specific rules applied by NautilusTrader for normalizing crypto symbols from Tardis, ensuring seamless compatibility with its crypto exchange adapters. Original exchange symbols are preserved in the `raw_symbol` field of Nautilus instrument definitions.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: APIDOC
+KEYWORDS: Binance,Bybit,Tardis,dYdX,documentation:API-reference,integration,mapping,normalization,symbology
+CODE:
+```
+Common Rules:
+- All symbols are converted to uppercase.
+- Market type suffixes are appended with a hyphen for some exchanges.
+- Original exchange symbols are preserved in the Nautilus instrument definitions `raw_symbol` field.
+
+Exchange-Specific Normalizations:
+- Binance: Appends the suffix `-PERP` to all perpetual symbols.
+- Bybit: Uses specific product category suffixes, including `-SPOT`, `-LINEAR`, `-INVERSE`, `-OPTION`.
+- dYdX: Appends the suffix `-PERP` to all perpetual symbols.
+- Gate.io: Appends the suffix `-PERP` to all perpetual symbols.
+```
+----------------------------------------
+TITLE: Execute Rust Replay via Cargo Command
+DESCRIPTION: This command demonstrates how to run the Rust replay binary directly using Cargo. It specifies the binary name and requires the path to your configuration file.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: bash
+KEYWORDS: Tardis,cargo,data type:historical,integration,language:rust,replay,run
+CODE:
+```
+cargo run --bin tardis-replay <path_to_your_config>
+```
+----------------------------------------
+TITLE: Run Historical Data Replay in Rust
+DESCRIPTION: This example shows how to create a Rust binary to run a historical data replay using `nautilus_adapters::tardis::replay`. It initializes logging and requires a configuration file path for the replay.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: rust
+KEYWORDS: Tardis,data type:historical,integration,language:rust,replay,run,tokio
+CODE:
+```
+use std::{env, path::PathBuf};
+
+use nautilus_adapters::tardis::replay::run_tardis_machine_replay_from_config;
+
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
+
+    let config_filepath = PathBuf::from("YOUR_CONFIG_FILEPATH");
+    run_tardis_machine_replay_from_config(&config_filepath).await;
+}
+```
+----------------------------------------
+TITLE: Map Tardis Normalized Market Data Formats to NautilusTrader Data Types
+DESCRIPTION: This table outlines the mapping between various normalized market data formats provided by Tardis and their corresponding data types within NautilusTrader. It details which Tardis data streams are supported and how they are represented in NautilusTrader's data model, including aliases for quote data.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: APIDOC
+KEYWORDS: Tardis,data type:market-data,data types,documentation:API-reference,integration,mapping,symbology
+CODE:
+```
+Tardis format -> Nautilus data type
+book_change -> OrderBookDelta
+book_snapshot_* -> OrderBookDepth10
+quote -> QuoteTick (alias for book_snapshot_1_0ms)
+quote_10s -> QuoteTick (alias for book_snapshot_1_10s)
+trade -> Trade
+trade_bar_* -> Bar
+instrument -> CurrencyPair, CryptoFuture, CryptoPerpetual, OptionContract
+derivative_ticker -> *Not yet supported*
+disconnect -> *Not applicable*
+```
+----------------------------------------
+TITLE: Enable Rust Logging for Replays
+DESCRIPTION: To enable detailed logging for Rust applications, export the `RUST_LOG` environment variable. This command sets the logging level to debug.
+SOURCE: docs/integrations/tardis.md
+LANGUAGE: bash
+KEYWORDS: Tardis,configuration:environment-variables,integration,language:rust,logging,replay
+CODE:
+```
+export RUST_LOG=debug
+```

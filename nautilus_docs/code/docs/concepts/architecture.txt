@@ -1,0 +1,31 @@
+TITLE: NautilusTrader Build-Time Dependency Flow Diagram
+DESCRIPTION: This diagram illustrates the build-time dependency relationship between the high-level `nautilus_trader` Python/Cython layer and the low-level `nautilus_core` Rust layer. It shows how the Python components interact with the Rust core through a C API, highlighting the compilation dependencies.
+SOURCE: docs/concepts/architecture.md
+LANGUAGE: ASCII Art
+KEYWORDS: C API,architecture,build process,dependencies,diagram
+CODE:
+```
+┌─────────────────────────┐
+│                         │
+│                         │
+│     nautilus_trader     │
+│                         │
+│     Python / Cython     │
+│                         │
+│                         │
+└────────────┬────────────┘
+ C API       │
+             │
+             │
+             │
+ C API       ▼
+┌─────────────────────────┐
+│                         │
+│                         │
+│      nautilus_core      │
+│                         │
+│          Rust           │
+│                         │
+│                         │
+└─────────────────────────┘
+```

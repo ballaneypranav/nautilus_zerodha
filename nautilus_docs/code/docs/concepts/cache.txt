@@ -1,0 +1,479 @@
+TITLE: Configuring Cache Persistence with DatabaseConfig (Python)
+DESCRIPTION: Shows how to configure the `CacheConfig` to use a database backend for persistence by providing a `DatabaseConfig` object. This example sets up a Redis database connection with specified host, port, and timeout.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: CacheConfig,DatabaseConfig,cache,configuration,data:persistence,tech:database,tech:redis,technology
+CODE:
+```
+from nautilus_trader.config import DatabaseConfig
+
+config = CacheConfig(
+    database=DatabaseConfig(
+        type="redis",      # Database type
+        host="localhost",  # Database host
+        port=6379,         # Database port
+        timeout=2,         # Connection timeout (seconds)
+    ),
+)
+```
+----------------------------------------
+TITLE: Comparing Cache and Portfolio Usage in NautilusTrader (Python)
+DESCRIPTION: Illustrates the difference between using the Cache for historical position snapshots and the Portfolio for current, real-time exposure information within a strategy's on_position_changed method.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: cache,data type:historical,data type:live,handler:on_position_changed,portfolio,position,strategy
+CODE:
+```
+class MyStrategy(Strategy):
+    def on_position_changed(self, event: PositionEvent) -> None:
+        # Use Cache when you need historical perspective
+        position_history = self.cache.position_snapshots(event.position_id)
+
+        # Use Portfolio when you need current real-time state
+        current_exposure = self.portfolio.net_exposure(event.instrument_id)
+```
+----------------------------------------
+TITLE: Checking Position State and Relationships in NautilusTrader Cache (Python)
+DESCRIPTION: Shows how to check the existence and state (open/closed) of a position by its ID, and how to retrieve related orders or find the position associated with a specific order ID.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: cache,order,position,query,state management
+CODE:
+```
+# Check position states
+exists = self.cache.position_exists(position_id)        # Checks if a position with the given ID exists
+is_open = self.cache.is_position_open(position_id)      # Checks if a position is open
+is_closed = self.cache.is_position_closed(position_id)  # Checks if a position is closed
+
+# Get position and order relationships
+orders = self.cache.orders_for_position(position_id)       # All orders related to a specific position
+position = self.cache.position_for_order(client_order_id)  # Find the position associated with a specific order
+```
+----------------------------------------
+TITLE: Market Data Strategy Example - Nautilus Trader Python
+DESCRIPTION: Demonstrates a simple strategy that subscribes to 1-minute bars. The `on_bar` method accesses the last three bars from the cache and retrieves the latest quote and trade ticks to calculate and log the current spread. Requires inheriting from `Strategy` and importing `BarType` and `Bar`.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: bar,cache,data handling,data subscription,handler:on_bar,spread calculation,strategy,tick
+CODE:
+```
+class MarketDataStrategy(Strategy):
+    def on_start(self):
+        # Subscribe to 1-minute bars
+        self.bar_type = BarType.from_str(f"{self.instrument_id}-1-MINUTE-LAST-EXTERNAL")  # example of instrument_id = "EUR/USD.FXCM"
+        self.subscribe_bars(self.bar_type)
+
+    def on_bar(self, bar: Bar) -> None:
+        bars = self.cache.bars(self.bar_type)[:3]
+        if len(bars) < 3:   # Wait until we have at least 3 bars
+            return
+
+        # Access last 3 bars for analysis
+        current_bar = bars[0]    # Most recent bar
+        prev_bar = bars[1]       # Second to last bar
+        prev_prev_bar = bars[2]  # Third to last bar
+
+        # Get latest quote and trade
+        latest_quote = self.cache.quote_tick(self.instrument_id)
+        latest_trade = self.cache.trade_tick(self.instrument_id)
+
+        if latest_quote is not None:
+            current_spread = latest_quote.ask_price - latest_quote.bid_price
+            self.log.info(f"Current spread: {current_spread}")
+```
+----------------------------------------
+TITLE: Retrieving Shared Data from Nautilus Trader Cache (Python)
+DESCRIPTION: Shows how another strategy can retrieve data previously stored in the shared cache. It accesses the data using the same key, deserializes it using pickle, and logs the retrieved information.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: Python
+KEYWORDS: cache,data:persistence,feature:shared-data,pickle,strategy
+CODE:
+```
+import pickle
+
+class AnotherStrategy(Strategy):
+    def on_start(self):
+        # Load the shared data from the same key
+        data_bytes = self.cache.get("shared_strategy_info")
+        if data_bytes is not None:
+            shared_data = pickle.loads(data_bytes)
+            self.log.info(f"Shared data retrieved: {shared_data}")
+```
+----------------------------------------
+TITLE: Accessing Cache Data in Nautilus Trader Strategy (Python)
+DESCRIPTION: Demonstrates how to access various types of data stored in the Cache from within a Nautilus Trader strategy's callback method, such as historical bars, current position details, and open orders for a specific instrument.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: bar,cache,data handling,handler:on_bar,order,position,query,strategy
+CODE:
+```
+def on_bar(self, bar: Bar) -> None:
+    # Current bar is provided in the parameter 'bar'
+
+    # Get historical bars from Cache
+    last_bar = self.cache.bar(self.bar_type, index=0)        # Last bar (practically the same as the 'bar' parameter)
+    previous_bar = self.cache.bar(self.bar_type, index=1)    # Previous bar
+    third_last_bar = self.cache.bar(self.bar_type, index=2)  # Third last bar
+
+    # Get current position information
+    if self.last_position_opened_id is not None:
+        position = self.cache.position(self.last_position_opened_id)
+        if position.is_open:
+            # Check position details
+            current_pnl = position.unrealized_pnl
+
+    # Get all open orders for our instrument
+    open_orders = self.cache.orders_open(instrument_id=self.instrument_id)
+```
+----------------------------------------
+TITLE: Accessing Trade Tick Data from Cache (Python)
+DESCRIPTION: Shows how to access trade tick data from the cache for a specific instrument ID. Examples include getting all trades (`trade_ticks`), the latest trade (`trade_tick`), a trade by index, the total count (`trade_tick_count`), and checking for existence (`has_trade_ticks`).
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: TradeTick,cache,data handling,data type:tick,query,strategy
+CODE:
+```
+# Get trades
+trades = self.cache.trade_ticks(instrument_id)         # Returns List[TradeTick] or an empty list if no trades found
+latest_trade = self.cache.trade_tick(instrument_id)    # Returns TradeTick or None if no such object exists
+second_last_trade = self.cache.trade_tick(instrument_id, index=1)  # Returns TradeTick or None if no such object exists
+
+# Check trade availability
+trade_count = self.cache.trade_tick_count(instrument_id)  # Returns the number of trades in cache for this instrument
+has_trades = self.cache.has_trade_ticks(instrument_id)    # Returns bool indicating if any trades exist
+```
+----------------------------------------
+TITLE: Retrieving Instrument Data in NautilusTrader Cache (Python)
+DESCRIPTION: Demonstrates how to fetch instrument objects or instrument IDs from the Cache, either individually by ID, all instruments, or filtered by venue or underlying asset.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: cache,instrument,query,underlying,venue
+CODE:
+```
+# Get instrument information
+instrument = self.cache.instrument(instrument_id) # Retrieve a specific instrument by its ID
+all_instruments = self.cache.instruments()        # Retrieve all instruments in the cache
+
+# Get filtered instruments
+venue_instruments = self.cache.instruments(venue=venue)              # Instruments for a specific venue
+instruments_by_underlying = self.cache.instruments(underlying="ES")  # Instruments by underlying
+
+# Get instrument identifiers
+instrument_ids = self.cache.instrument_ids()                   # Get all instrument IDs
+venue_instrument_ids = self.cache.instrument_ids(venue=venue)  # Get instrument IDs for a specific venue
+```
+----------------------------------------
+TITLE: Querying Positions by Criteria in NautilusTrader Cache (Python)
+DESCRIPTION: Demonstrates how to retrieve position objects from the Cache using various filtering criteria such as venue, instrument ID, strategy ID, or position side.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: PositionSide,cache,instrument,position,query,strategy,venue
+CODE:
+```
+venue_positions = self.cache.positions(venue=venue)                       # Positions for a specific venue
+instrument_positions = self.cache.positions(instrument_id=instrument_id)  # Positions for a specific instrument
+strategy_positions = self.cache.positions(strategy_id=strategy_id)        # Positions for a specific strategy
+long_positions = self.cache.positions(side=PositionSide.LONG)             # All long positions
+```
+----------------------------------------
+TITLE: Accessing Bar Data from Cache (Python)
+DESCRIPTION: Provides examples of accessing historical and recent bar data from the cache using methods like `bars` (get all), `bar` (get latest or by index), `bar_count` (get total count), and `has_bars` (check existence) for a specific bar type.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: BarType,bar,cache,data handling,query,strategy
+CODE:
+```
+# Get a list of all cached bars for a bar type
+bars = self.cache.bars(bar_type)  # Returns List[Bar] or an empty list if no bars found
+
+# Get the most recent bar
+latest_bar = self.cache.bar(bar_type)  # Returns Bar or None if no such object exists
+
+# Get a specific historical bar by index (0 = most recent)
+second_last_bar = self.cache.bar(bar_type, index=1)  # Returns Bar or None if no such object exists
+
+# Check if bars exist and get count
+bar_count = self.cache.bar_count(bar_type)  # Returns number of bars in cache for the specified bar type
+has_bars = self.cache.has_bars(bar_type)    # Returns bool indicating if any bars exist for the specified bar type
+```
+----------------------------------------
+TITLE: Configuring CacheConfig Parameters (Python)
+DESCRIPTION: Demonstrates how to initialize the `CacheConfig` object with various parameters to control caching behavior, including database persistence, data encoding, timestamp format, buffering, key prefixes, instance ID inclusion, startup flushing, instrument handling on reset, and capacity limits for ticks and bars.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: CacheConfig,cache,capacity,configuration,data:persistence,encoding
+CODE:
+```
+from nautilus_trader.config import CacheConfig
+
+cache_config = CacheConfig(
+    database: DatabaseConfig | None = None,  # Database configuration for persistence
+    encoding: str = "msgpack",               # Data encoding format ('msgpack' or 'json')
+    timestamps_as_iso8601: bool = False,     # Store timestamps as ISO8601 strings
+    buffer_interval_ms: int | None = None,   # Buffer interval for batch operations
+    use_trader_prefix: bool = True,          # Use trader prefix in keys
+    use_instance_id: bool = False,           # Include instance ID in keys
+    flush_on_start: bool = False,            # Clear database on startup
+    drop_instruments_on_reset: bool = True,  # Clear instruments on reset
+    tick_capacity: int = 10_000,             # Maximum ticks stored per instrument
+    bar_capacity: int = 10_000,              # Maximum bars stored per each bar-type
+)
+```
+----------------------------------------
+TITLE: Getting Position Counts by State and Filters in NautilusTrader Cache (Python)
+DESCRIPTION: Illustrates how to obtain counts of positions based on their state (open, closed, total) and how to apply filters like position side or instrument ID to the counts.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: cache,count,position,query,state management
+CODE:
+```
+# Get position counts in different states
+open_count = self.cache.positions_open_count()      # Number of currently open positions
+closed_count = self.cache.positions_closed_count()  # Number of closed positions
+total_count = self.cache.positions_total_count()    # Total number of positions in the system
+
+# Get filtered position counts
+long_positions_count = self.cache.positions_open_count(side=PositionSide.LONG)              # Number of open long positions
+instrument_positions_count = self.cache.positions_total_count(instrument_id=instrument_id)  # Number of positions for a given instrument
+```
+----------------------------------------
+TITLE: Get Current Price by Type - Nautilus Trader Python
+DESCRIPTION: Retrieves the current price for a specified instrument and price type (e.g., BID, ASK, MID, LAST) from the cache. Returns a Price object or None if not found. Requires the instrument ID and the desired PriceType enum.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: PriceType,cache,price,query
+CODE:
+```
+# Get current price by type; Returns Price or None.
+price = self.cache.price(
+    instrument_id=instrument_id,
+    price_type=PriceType.MID  # Options: BID, ASK, MID, LAST
+)
+```
+----------------------------------------
+TITLE: Query Order States - Nautilus Trader Python
+DESCRIPTION: Allows querying orders based on their current state (open, closed, emulated, inflight). Also provides methods to check the state of a specific order by its client ID. These methods return lists of orders or boolean values.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: cache,order,order state,query,state management
+CODE:
+```
+# Get orders by their current state
+open_orders = self.cache.orders_open()          # Orders currently active at the venue
+closed_orders = self.cache.orders_closed()      # Orders that have completed their lifecycle
+emulated_orders = self.cache.orders_emulated()  # Orders being simulated locally by the system
+inflight_orders = self.cache.orders_inflight()  # Orders submitted (or modified) to venue, but not yet confirmed
+
+# Check specific order states
+exists = self.cache.order_exists(client_order_id)            # Checks if an order with the given ID exists in the cache
+is_open = self.cache.is_order_open(client_order_id)          # Checks if an order is currently open
+is_closed = self.cache.is_order_closed(client_order_id)      # Checks if an order is closed
+is_emulated = self.cache.is_order_emulated(client_order_id)  # Checks if an order is being simulated locally
+is_inflight = self.cache.is_order_inflight(client_order_id)  # Checks if an order is submitted or modified, but not yet confirmed
+```
+----------------------------------------
+TITLE: Access Orders - Nautilus Trader Python
+DESCRIPTION: Provides various methods to access orders from the cache. Includes retrieving a specific order by client ID, getting all orders, and filtering orders by venue, strategy, or instrument. Requires a `ClientOrderId` object for specific lookups and access to venue, strategy ID, or instrument ID for filtering.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: cache,instrument,order,query,strategy,venue
+CODE:
+```
+# Get a specific order by its client order ID
+order = self.cache.order(ClientOrderId("O-123"))
+
+# Get all orders in the system
+orders = self.cache.orders()
+
+# Get orders filtered by specific criteria
+orders_for_venue = self.cache.orders(venue=venue)                       # All orders for a specific venue
+orders_for_strategy = self.cache.orders(strategy_id=strategy_id)        # All orders for a specific strategy
+orders_for_instrument = self.cache.orders(instrument_id=instrument_id)  # All orders for an instrument
+```
+----------------------------------------
+TITLE: Accessing Quote Tick Data from Cache (Python)
+DESCRIPTION: Demonstrates how to retrieve quote tick data from the cache for a given instrument ID. It includes methods to get all quotes (`quote_ticks`), the latest quote (`quote_tick`), a quote by index, the total count (`quote_tick_count`), and check for existence (`has_quote_ticks`).
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: QuoteTick,cache,data handling,data type:tick,query,strategy
+CODE:
+```
+# Get quotes
+quotes = self.cache.quote_ticks(instrument_id)                     # Returns List[QuoteTick] or an empty list if no quotes found
+latest_quote = self.cache.quote_tick(instrument_id)                # Returns QuoteTick or None if no such object exists
+second_last_quote = self.cache.quote_tick(instrument_id, index=1)  # Returns QuoteTick or None if no such object exists
+
+# Check quote availability
+quote_count = self.cache.quote_tick_count(instrument_id)  # Returns the number of quotes in cache for this instrument
+has_quotes = self.cache.has_quote_ticks(instrument_id)    # Returns bool indicating if any quotes exist for this instrument
+```
+----------------------------------------
+TITLE: Accessing Order Book Data from Cache (Python)
+DESCRIPTION: Explains how to retrieve the current order book for an instrument ID from the cache using `order_book`. It also shows how to check if an order book exists (`has_order_book`) and get the count of updates received (`book_update_count`).
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: cache,data handling,data type:order-book,query,strategy
+CODE:
+```
+# Get current order book
+book = self.cache.order_book(instrument_id)  # Returns OrderBook or None if no such object exists
+
+# Check if order book exists
+has_book = self.cache.has_order_book(instrument_id)  # Returns bool indicating if an order book exists
+
+# Get count of order book updates
+update_count = self.cache.book_update_count(instrument_id)  # Returns the number of updates received
+```
+----------------------------------------
+TITLE: Storing and Retrieving Custom Data in NautilusTrader Cache (Python)
+DESCRIPTION: Explains how to store and retrieve arbitrary binary data in the Cache using a key-value pair mechanism, suitable for sharing simple data between components.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: add,binary data,cache,data handling,data type:custom,get,key-value store
+CODE:
+```
+# Call this code inside Strategy methods (`self` refers to Strategy)
+
+# Store data
+self.cache.add(key="my_key", value=b"some binary data")
+
+# Retrieve data
+stored_data = self.cache.get("my_key")  # Returns bytes or None
+```
+----------------------------------------
+TITLE: Get Order Counts - Nautilus Trader Python
+DESCRIPTION: Retrieves the number of orders in different states (open, closed, emulated, inflight, total). Supports filtering counts by criteria such as order side (e.g., OrderSide.BUY) or venue. Returns integer counts.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: cache,count,order,query,state management
+CODE:
+```
+# Get counts of orders in different states
+open_count = self.cache.orders_open_count()          # Number of open orders
+closed_count = self.cache.orders_closed_count()      # Number of closed orders
+emulated_count = self.cache.orders_emulated_count()  # Number of emulated orders
+inflight_count = self.cache.orders_inflight_count()  # Number of inflight orders
+total_count = self.cache.orders_total_count()        # Total number of orders in the system
+
+# Get filtered order counts
+buy_orders_count = self.cache.orders_open_count(side=OrderSide.BUY)  # Number of currently open BUY orders
+venue_orders_count = self.cache.orders_total_count(venue=venue)      # Total number of orders for a given venue
+```
+----------------------------------------
+TITLE: Accessing Account Information in NautilusTrader Cache (Python)
+DESCRIPTION: Provides examples of retrieving account objects or account IDs from the Cache using different methods, including by account ID, venue, or getting all accounts.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: account,cache,query,venue
+CODE:
+```
+# Access account information
+account = self.cache.account(account_id)       # Retrieve account by ID
+account = self.cache.account_for_venue(venue)  # Retrieve account for a specific venue
+account_id = self.cache.account_id(venue)      # Retrieve account ID for a venue
+accounts = self.cache.accounts()               # Retrieve all accounts in the cache
+```
+----------------------------------------
+TITLE: Configuring Cache Capacity in Nautilus Trader (Python)
+DESCRIPTION: Illustrates how to configure the capacity of the Cache using the CacheConfig class, specifying the maximum number of ticks and bars to store. This configuration can be applied when setting up a BacktestEngine or a TradingNode.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: BacktestEngineConfig,CacheConfig,TradingNodeConfig,cache,capacity,configuration
+CODE:
+```
+from nautilus_trader.config import CacheConfig, BacktestEngineConfig, TradingNodeConfig
+
+# For backtesting
+engine_config = BacktestEngineConfig(
+    cache=CacheConfig(
+        tick_capacity=10_000,  # Store last 10,000 ticks per instrument
+        bar_capacity=5_000    # Store last 5,000 bars per bar type
+    )
+)
+
+# For live trading
+node_config = TradingNodeConfig(
+    cache=CacheConfig(
+        tick_capacity=10_000,
+        bar_capacity=5_000
+    )
+)
+```
+----------------------------------------
+TITLE: Storing Shared Data in Nautilus Trader Cache (Python)
+DESCRIPTION: Demonstrates how to prepare and store data in the shared cache using pickle serialization. This allows the data to be accessed by other strategies running in parallel and persist across strategy resets.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: Python
+KEYWORDS: cache,data:persistence,feature:shared-data,pickle,strategy
+CODE:
+```
+import pickle
+
+class MyStrategy(Strategy):
+    def on_start(self):
+        # Prepare data you want to share with other strategies
+        shared_data = {
+            "last_reset": self.clock.timestamp_ns(),
+            "trading_enabled": True,
+            # Include any other fields that you want other strategies to read
+        }
+
+        # Store it in the cache with a descriptive key
+        # This way, multiple strategies can call self.cache.get("shared_strategy_info")
+        # to retrieve the same data
+        self.cache.add("shared_strategy_info", pickle.dumps(shared_data))
+```
+----------------------------------------
+TITLE: Access Positions - Nautilus Trader Python
+DESCRIPTION: Provides methods to access positions from the cache. Includes retrieving a specific position by ID, getting all positions, and filtering positions by their state (open, closed). Requires a `PositionId` object for specific lookups.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: PositionId,cache,position,query,state management
+CODE:
+```
+# Get a specific position by its ID
+position = self.cache.position(PositionId("P-123"))
+
+# Get positions by their state
+all_positions = self.cache.positions()            # All positions in the system
+open_positions = self.cache.positions_open()      # All currently open positions
+closed_positions = self.cache.positions_closed()  # All closed positions
+```
+----------------------------------------
+TITLE: Loading Currency Data in NautilusTrader Cache (Python)
+DESCRIPTION: Shows a simple example of loading currency data for a specific currency code (e.g., "USD") into the Cache.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: cache,currency,data handling,data:loading
+CODE:
+```
+# Get currency information
+currency = self.cache.load_currency("USD")  # Loads currency data for USD
+```
+----------------------------------------
+TITLE: Get Available Bar Types - Nautilus Trader Python
+DESCRIPTION: Fetches a list of available bar types for a given instrument, filtered by price type and aggregation source. Returns a list of BarType objects. Requires importing PriceType and AggregationSource from `nautilus_trader.core.rust.model`.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: BarType,bar,cache,query
+CODE:
+```
+from nautilus_trader.core.rust.model import PriceType, AggregationSource
+
+# Get all available bar types for an instrument; Returns List[BarType].
+bar_types = self.cache.bar_types(
+    instrument_id=instrument_id,
+    price_type=PriceType.LAST,  # Options: BID, ASK, MID, LAST
+    aggregation_source=AggregationSource.EXTERNAL,
+)
+```
+----------------------------------------
+TITLE: Importing PriceType Enum (Python)
+DESCRIPTION: Imports the `PriceType` enumeration from the `nautilus_trader.core.rust.model` module. This enum is likely used to specify the type of price (e.g., Bid, Ask, Last) when accessing or processing market data.
+SOURCE: docs/concepts/cache.md
+LANGUAGE: python
+KEYWORDS: PriceType,data types,dev:imports,development
+CODE:
+```
+from nautilus_trader.core.rust.model import PriceType
+```

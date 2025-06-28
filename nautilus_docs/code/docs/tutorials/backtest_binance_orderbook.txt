@@ -1,0 +1,285 @@
+TITLE: Executing Nautilus Trader Backtest with BacktestNode in Python
+DESCRIPTION: This code instantiates a `BacktestNode` with the previously defined `config` and then executes the backtest by calling the `run()` method. The `result` object will contain the outcomes of the backtest simulation.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestNode,backtesting,configuration,run
+CODE:
+```
+node = BacktestNode(configs=[config])
+
+result = node.run()
+```
+----------------------------------------
+TITLE: Processing Order Book Deltas with Wrangler - Python
+DESCRIPTION: This snippet initializes an OrderBookDeltaDataWrangler for the BTCUSDT instrument. It then processes both the initial order book snapshot and subsequent updates, concatenating them and sorting by initialization timestamp to ensure chronological order for backtesting.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,OrderBookDeltaDataWrangler,TestInstrumentProvider,data handling,data type:order-book-delta,data:wrangling,integration
+CODE:
+```
+BTCUSDT_BINANCE = TestInstrumentProvider.btcusdt_binance()
+wrangler = OrderBookDeltaDataWrangler(BTCUSDT_BINANCE)
+
+deltas = wrangler.process(df_snap)
+deltas += wrangler.process(df_update)
+deltas.sort(key=lambda x: x.ts_init)  # Ensure data is non-decreasing by `ts_init`
+deltas[:10]
+```
+----------------------------------------
+TITLE: Configuring Nautilus Trader Backtest Run in Python
+DESCRIPTION: This snippet initializes a `BacktestRunConfig` object, which defines the parameters for a backtest. It includes engine settings (strategies, logging level set to "ERROR" to prevent Jupyter hangs), data configurations, and venue configurations. This object is crucial for setting up the backtest environment.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestEngineConfig,BacktestRunConfig,backtesting,configuration,data handling,logging,venue
+CODE:
+```
+config = BacktestRunConfig(
+    engine=BacktestEngineConfig(
+        strategies=strategies,
+        logging=LoggingConfig(log_level="ERROR"),
+    ),
+    data=data_configs,
+    venues=venues_configs,
+)
+```
+----------------------------------------
+TITLE: Configuring Nautilus Trader Backtest Run in Python
+DESCRIPTION: This snippet initializes a `BacktestRunConfig` object, which defines the parameters for a backtest. It includes engine settings (strategies, logging level set to "ERROR" to prevent Jupyter hangs), data configurations, and venue configurations. This object is crucial for setting up the backtest environment.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestEngineConfig,BacktestRunConfig,Bybit,backtesting,configuration,data handling,integration,logging,venue
+CODE:
+```
+config = BacktestRunConfig(
+    engine=BacktestEngineConfig(
+        strategies=strategies,
+        logging=LoggingConfig(log_level="ERROR"),
+    ),
+    data=data_configs,
+    venues=venues_configs,
+)
+```
+----------------------------------------
+TITLE: Configuring NautilusTrader Backtest Node - Python
+DESCRIPTION: This snippet defines the configuration for a NautilusTrader backtest, including data sources, venue settings, and strategy parameters. It specifies the catalog path, instrument ID, book type, starting balances, and the OrderBookImbalance strategy with its specific parameters.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestDataConfig,BacktestVenueConfig,Binance,ImportableStrategyConfig,L2,OrderBookImbalance,ParquetDataCatalog,backtesting,configuration,data catalog,integration
+CODE:
+```
+instrument = catalog.instruments()[0]
+book_type = "L2_MBP"  # Ensure data book type matches venue book type
+
+data_configs = [BacktestDataConfig(
+        catalog_path=CATALOG_PATH,
+        data_cls=OrderBookDelta,
+        instrument_id=instrument.id,
+        # start_time=start,  # Run across all data
+        # end_time=end,  # Run across all data
+    )
+]
+
+venues_configs = [
+    BacktestVenueConfig(
+        name="BINANCE",
+        oms_type="NETTING",
+        account_type="CASH",
+        base_currency=None,
+        starting_balances=["20 BTC", "100000 USDT"],
+        book_type=book_type  # <-- Venues book type
+    )
+]
+
+strategies = [
+    ImportableStrategyConfig(
+        strategy_path="nautilus_trader.examples.strategies.orderbook_imbalance:OrderBookImbalance",
+        config_path="nautilus_trader.examples.strategies.orderbook_imbalance:OrderBookImbalanceConfig",
+        config={
+            "instrument_id": instrument.id,
+            "book_type": book_type,
+            "max_trade_size": Decimal("1.000"),
+            "min_seconds_between_triggers": 1.0
+        }
+    )
+]
+```
+----------------------------------------
+TITLE: Generating Account Report for Specific Venue in Nautilus Trader in Python
+DESCRIPTION: This snippet generates an account report for a specific trading venue, in this case, "BINANCE". It provides a summary of the account's financial status, including balances and equity, as simulated during the backtest for the specified venue.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,account,backtesting,integration,reporting & analysis,venue
+CODE:
+```
+engine.trader.generate_account_report(Venue("BINANCE"))
+```
+----------------------------------------
+TITLE: Generating Positions Report from Nautilus Trader Engine in Python
+DESCRIPTION: This code calls the `generate_positions_report()` method on the `engine.trader` object. This action produces a comprehensive report detailing all open and closed positions managed by the trader during the backtest.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,position,reporting & analysis
+CODE:
+```
+engine.trader.generate_positions_report()
+```
+----------------------------------------
+TITLE: Initializing Parquet Data Catalog - Python
+DESCRIPTION: This snippet defines the path for the data catalog, clears any existing catalog at that location, and then creates a new, empty directory. Finally, it initializes a ParquetDataCatalog instance pointing to this newly created directory.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: ParquetDataCatalog,data catalog,data:persistence,directory management,initialization
+CODE:
+```
+CATALOG_PATH = os.getcwd() + "/catalog"
+
+# Clear if it already exists, then create fresh
+if os.path.exists(CATALOG_PATH):
+    shutil.rmtree(CATALOG_PATH)
+os.mkdir(CATALOG_PATH)
+
+# Create a catalog instance
+catalog = ParquetDataCatalog(CATALOG_PATH)
+```
+----------------------------------------
+TITLE: Importing NautilusTrader and Data Handling Modules - Python
+DESCRIPTION: This snippet imports necessary modules for data handling, backtesting, configuration, and testing within the NautilusTrader framework. It includes components for loading Binance order book data, managing backtest nodes, configuring strategies, and persisting data.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestNode,Binance,OrderBookDelta,ParquetDataCatalog,backtesting,configuration,data catalog,data type:order-book-delta,dev:imports,development,integration
+CODE:
+```
+import os
+import shutil
+from decimal import Decimal
+from pathlib import Path
+
+import pandas as pd
+
+from nautilus_trader.adapters.binance.loaders import BinanceOrderBookDeltaDataLoader
+from nautilus_trader.backtest.node import BacktestDataConfig
+from nautilus_trader.backtest.node import BacktestEngineConfig
+from nautilus_trader.backtest.node import BacktestNode
+from nautilus_trader.backtest.node import BacktestRunConfig
+from nautilus_trader.backtest.node import BacktestVenueConfig
+from nautilus_trader.config import ImportableStrategyConfig
+from nautilus_trader.config import LoggingConfig
+from nautilus_trader.core.datetime import dt_to_unix_nanos
+from nautilus_trader.model import OrderBookDelta
+from nautilus_trader.persistence.catalog import ParquetDataCatalog
+from nautilus_trader.persistence.wranglers import OrderBookDeltaDataWrangler
+from nautilus_trader.test_kit.providers import TestInstrumentProvider
+```
+----------------------------------------
+TITLE: Querying Order Book Deltas from Catalog - Python
+DESCRIPTION: This snippet demonstrates how to query order book deltas from the ParquetDataCatalog within a specified time range (November 1st to November 4th, 2022). It prints the number of deltas found and the first ten entries.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,OrderBookDelta,data catalog,data type:order-book-delta,integration,query,time range
+CODE:
+```
+start = dt_to_unix_nanos(pd.Timestamp("2022-11-01", tz="UTC"))
+end =  dt_to_unix_nanos(pd.Timestamp("2022-11-04", tz="UTC"))
+
+deltas = catalog.order_book_deltas(start=start, end=end)
+print(len(deltas))
+deltas[:10]
+```
+----------------------------------------
+TITLE: Writing Instrument and Tick Data to Catalog - Python
+DESCRIPTION: This snippet writes the instrument definition (BTCUSDT_BINANCE) and the processed order book deltas to the initialized ParquetDataCatalog. This makes the data available for efficient retrieval during backtesting.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,ParquetDataCatalog,data catalog,data handling,data type:delta,data:persistence,instrument,integration
+CODE:
+```
+catalog.write_data([BTCUSDT_BINANCE])
+catalog.write_data(deltas)
+```
+----------------------------------------
+TITLE: Loading Order Book Updates with Row Limit - Python
+DESCRIPTION: This snippet loads a specified number of rows (1 million) of order book update data for BTCUSDT from a CSV file. It uses the BinanceOrderBookDeltaDataLoader and displays the first few rows of the resulting DataFrame.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,data handling,data type:order-book-delta,data:loading,integration,row limit
+CODE:
+```
+# Then we'll load the order book updates, to save time here we're limiting to 1 million rows
+path_update = data_path / "BTCUSDT_T_DEPTH_2022-11-01_depth_update.csv"
+nrows = 1_000_000
+df_update = BinanceOrderBookDeltaDataLoader.load(path_update, nrows=nrows)
+df_update.head()
+```
+----------------------------------------
+TITLE: Generating Order Fills Report from Nautilus Trader Engine in Python
+DESCRIPTION: This snippet retrieves the `BacktestEngine` instance from the `BacktestNode` using the configuration ID. It then uses the engine's `trader` component to generate a detailed report of all order fills that occurred during the backtest.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: BacktestEngine,backtesting,execution,order fills,reporting & analysis
+CODE:
+```
+from nautilus_trader.backtest.engine import BacktestEngine
+from nautilus_trader.model import Venue
+
+
+engine: BacktestEngine = node.get_engine(config.id)
+
+engine.trader.generate_order_fills_report()
+```
+----------------------------------------
+TITLE: Verifying Instrument in Data Catalog - Python
+DESCRIPTION: This snippet retrieves and prints the list of instruments stored in the ParquetDataCatalog. This serves as a confirmation that the BTCUSDT_BINANCE instrument was successfully written to the catalog.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: data catalog,dev:verification,development,instrument,query
+CODE:
+```
+catalog.instruments()
+```
+----------------------------------------
+TITLE: Loading Initial Order Book Snapshot - Python
+DESCRIPTION: This snippet loads the initial order book snapshot data for BTCUSDT from a specified CSV file using the BinanceOrderBookDeltaDataLoader. The head() method is called to display the first few rows of the loaded DataFrame.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,data handling,data type:order-book,data:loading,delta,integration,snapshot
+CODE:
+```
+# First we'll load the initial order book snapshot
+path_snap = data_path / "BTCUSDT_T_DEPTH_2022-11-01_depth_snap.csv"
+df_snap = BinanceOrderBookDeltaDataLoader.load(path_snap)
+df_snap.head()
+```
+----------------------------------------
+TITLE: Verifying Raw Data Files Existence - Python
+DESCRIPTION: This snippet constructs the full path to the Binance data directory and then lists its contents to verify that raw historical data files are present. An assertion ensures that the directory is not empty before proceeding.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Binance,assertion,data handling,dev:verification,development,file system,integration
+CODE:
+```
+data_path = Path(DATA_DIR).expanduser() / "Data" / "Binance"
+raw_files = list(data_path.iterdir())
+assert raw_files, f"Unable to find any histdata files in directory {data_path}"
+raw_files
+```
+----------------------------------------
+TITLE: Defining Data Directory Path - Python
+DESCRIPTION: This snippet defines the base directory where historical Binance order book data is expected to be stored. It uses a tilde (~) to represent the user's home directory, which will be expanded to an absolute path.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: Bybit,configuration,data handling,directory path,integration
+CODE:
+```
+# Path to your data directory, using user /Downloads as an example
+DATA_DIR = "~/Downloads"
+```
+----------------------------------------
+TITLE: Displaying Backtest Result Object in Python
+DESCRIPTION: This snippet simply displays the `result` object obtained from the backtest execution. In an interactive environment like Jupyter, this would typically render a summary or representation of the backtest outcomes.
+SOURCE: docs/tutorials/backtest_binance_orderbook.ipynb
+LANGUAGE: python
+KEYWORDS: backtesting,display,reporting & analysis,results
+CODE:
+```
+result
+```

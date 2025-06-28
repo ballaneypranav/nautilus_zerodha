@@ -1,0 +1,256 @@
+TITLE: Polymarket Order Types Supported by NautilusTrader
+DESCRIPTION: Details the various order types available on Polymarket and their support status within NautilusTrader, including notes on execution behavior. This table clarifies which order types are fully supported and which are not.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: Polymarket,binary options,documentation:API-reference,integration,order types,supported features
+CODE:
+```
+Order Types:
+  MARKET:
+    Binary Options: ✓
+    Notes: Executed as marketable limit order.
+  LIMIT:
+    Binary Options: ✓
+    Notes: 
+  STOP_MARKET:
+    Binary Options: -
+    Notes: Not supported.
+  STOP_LIMIT:
+    Binary Options: -
+    Notes: Not supported.
+  MARKET_IF_TOUCHED:
+    Binary Options: -
+    Notes: Not supported.
+  LIMIT_IF_TOUCHED:
+    Binary Options: -
+    Notes: Not supported.
+  TRAILING_STOP_MARKET:
+    Binary Options: -
+    Notes: Not supported.
+```
+----------------------------------------
+TITLE: Install NautilusTrader with Polymarket Support via pip
+DESCRIPTION: This command installs or upgrades the NautilusTrader library, including the necessary dependencies for Polymarket integration, using the pip package manager.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: bash
+KEYWORDS: Polymarket,dev:extras,dev:installation,dev:package-management,development,integration
+CODE:
+```
+pip install --upgrade "nautilus_trader[polymarket]"
+```
+----------------------------------------
+TITLE: NautilusTrader Polymarket Execution Client Configuration Options
+DESCRIPTION: Details the available configuration options for the NautilusTrader execution client when interacting with Polymarket, including default values and descriptions for each setting. These options control various aspects of the client's behavior.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: Polymarket,client:execution,configuration,documentation:API-reference,funder,integration,signature type
+CODE:
+```
+Configuration Options:
+  signature_type:
+    Default: 0
+    Description: Polymarket signature type (EOA).
+  funder:
+    Default: None
+    Description: Wallet address for funding USDC transactions.
+  generate_order_history_from_trades:
+    Default: False
+    Description: Experimental feature to generate order reports from trade history (not recommended).
+  log_raw_ws_messages:
+    Default: False
+    Description: If True, logs raw WebSocket messages (performance penalty from pretty JSON formatting).
+```
+----------------------------------------
+TITLE: Polymarket Client Configuration Parameters
+DESCRIPTION: Defines the key parameters for configuring NautilusTrader's Polymarket clients (`PolymarketDataClientConfig`, `PolymarketExecClientConfig`). These parameters control wallet access, funding, and API authentication, often sourced from environment variables for security and convenience.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: API credentials,Polymarket,configuration,configuration:environment-variables,documentation:API-reference,funder,integration,private key
+CODE:
+```
+Polymarket Client Configuration:
+  private_key: string
+    Description: Private key for your external EOA wallet (not Polymarket GUI wallet). Used for signing transactions.
+    Source: POLYMARKET_PK environment variable if not provided.
+  funder: string
+    Description: USDC.e wallet address used for funding trades.
+    Source: POLYMARKET_FUNDER environment variable if not provided.
+  api_key: string
+    Description: API key for interacting with the Polymarket CLOB.
+    Source: POLYMARKET_API_KEY environment variable if not provided.
+  api_secret: string
+    Description: API secret for interacting with the Polymarket CLOB.
+    Source: POLYMARKET_API_SECRET environment variable if not provided.
+  passphrase: string
+    Description: Passphrase for interacting with the Polymarket CLOB.
+    Source: POLYMARKET_PASSPHRASE environment variable if not provided.
+```
+----------------------------------------
+TITLE: Build NautilusTrader from Source with All Extras
+DESCRIPTION: This command synchronizes dependencies and builds NautilusTrader from source, ensuring all extra features, including Polymarket support, are included in the build process.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: bash
+KEYWORDS: Polymarket,dev:build,dev:extras,dev:installation,dev:package-management,dev:source-build,development,integration
+CODE:
+```
+uv sync --all-extras
+```
+----------------------------------------
+TITLE: Polymarket Execution Instructions Supported by NautilusTrader
+DESCRIPTION: Lists specific execution instructions on Polymarket and their compatibility with NautilusTrader. This section highlights instructions that are currently not supported.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: Polymarket,documentation:API-reference,execution instructions,integration,post_only,reduce_only
+CODE:
+```
+Execution Instructions:
+  post_only:
+    Binary Options: -
+    Notes: Not supported.
+  reduce_only:
+    Binary Options: -
+    Notes: Not supported.
+```
+----------------------------------------
+TITLE: Polymarket Advanced Order Features Support in NautilusTrader
+DESCRIPTION: Describes advanced order features on Polymarket and their current support status within NautilusTrader, highlighting limitations like cancellation-only modification for order modification.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: Polymarket,documentation:API-reference,feature:advanced-orders,integration,limitations,order modification
+CODE:
+```
+Advanced Order Features:
+  Order Modification:
+    Binary Options: -
+    Notes: Cancellation functionality only.
+  Bracket/OCO Orders:
+    Binary Options: -
+    Notes: Not supported.
+  Iceberg Orders:
+    Binary Options: -
+    Notes: Not supported.
+```
+----------------------------------------
+TITLE: Execute Polymarket Contract Allowance Script
+DESCRIPTION: Run the Python script to approve necessary allowances for Polymarket's smart contracts, enabling interaction with your USDC and CTF tokens. This operation only needs to be performed once per EOA wallet you intend to use for trading.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: bash
+KEYWORDS: Polymarket,allowance,blockchain,integration,setup,smart contract
+CODE:
+```
+python nautilus_trader/adapters/polymarket/scripts/set_allowances.py
+```
+----------------------------------------
+TITLE: Set Polygon Wallet Environment Variables for Polymarket Allowances
+DESCRIPTION: Before running the allowance script, set your Polygon private and public keys as environment variables. This ensures the script can access your wallet for transaction signing and identification on the Polygon network.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: bash
+KEYWORDS: Polymarket,blockchain,configuration,configuration:environment-variables,integration,private key,wallet
+CODE:
+```
+export POLYGON_PRIVATE_KEY="YOUR_PRIVATE_KEY"
+export POLYGON_PUBLIC_KEY="YOUR_PUBLIC_KEY"
+```
+----------------------------------------
+TITLE: Generate Polymarket API Keys Script
+DESCRIPTION: Execute this Python script to generate API credentials (key, secret, passphrase) required for interacting with the Polymarket CLOB. Ensure `POLYMARKET_PK` and `POLYMARKET_FUNDER` environment variables are set beforehand to facilitate the key generation process.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: bash
+KEYWORDS: API credentials,Polymarket,generate,integration,script,setup
+CODE:
+```
+python nautilus_trader/adapters/polymarket/scripts/create_api_key.py
+```
+----------------------------------------
+TITLE: NautilusTrader Polymarket WebSocket Client Architecture
+DESCRIPTION: Provides an overview of the `PolymarketWebSocketClient`, highlighting its foundation on Nautilus's high-performance Rust-based `WebSocketClient` base class. It explains how the main data WebSocket handles initial subscriptions and how additional subscriptions require new client instances.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: Polymarket,WebSocket,architecture,data subscription,data type:live,documentation:API-reference,integration
+CODE:
+```
+PolymarketWebSocketClient:
+  Base Class: Nautilus WebSocketClient (Rust-based, high-performance)
+  Data Handling:
+    - Main data WebSocket handles all 'market' channel subscriptions received during the initial connection sequence, up to 'ws_connection_delay_secs'.
+    - For any additional subscriptions, a new PolymarketWebSocketClient is created for each new instrument (asset).
+```
+----------------------------------------
+TITLE: Polymarket Trade Statuses and NautilusTrader Handling
+DESCRIPTION: Explains the various statuses a trade can have on Polymarket, from initial matching to finality, and how NautilusTrader processes and records these updates via WebSocket. It also notes how initial trade details are stored.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: Polymarket,WebSocket,documentation:API-reference,execution,integration,reconciliation,trade status
+CODE:
+```
+Polymarket Trade Statuses:
+  MATCHED: Trade has been matched and sent to the executor service by the operator, the executor service submits the trade as a transaction to the Exchange contract.
+  MINED: Trade is observed to be mined into the chain, and no finality threshold is established.
+  CONFIRMED: Trade has achieved strong probabilistic finality and was successful.
+  RETRYING: Trade transaction has failed (revert or reorg) and is being retried/resubmitted by the operator.
+  FAILED: Trade has failed and is not being retried.
+
+Notes:
+  Once a trade is initially matched, subsequent trade status updates will be received via the WebSocket.
+  NautilusTrader records the initial trade details in the info field of the OrderFilled event, with additional trade events stored in the cache as JSON under a custom key to retain this information.
+```
+----------------------------------------
+TITLE: Polymarket Time-in-Force Options Supported by NautilusTrader
+DESCRIPTION: Outlines the time-in-force options available on Polymarket and their support status in NautilusTrader, with notes on their behavior and mapping.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: FOK,GTC,GTD,IOC,Polymarket,TimeInForce,documentation:API-reference,integration
+CODE:
+```
+Time-in-Force Options:
+  GTC:
+    Binary Options: ✓
+    Notes: Good Till Canceled.
+  GTD:
+    Binary Options: ✓
+    Notes: Good Till Date.
+  FOK:
+    Binary Options: ✓
+    Notes: Fill or Kill.
+  IOC:
+    Binary Options: ✓
+    Notes: Immediate or Cancel (maps to FAK).
+```
+----------------------------------------
+TITLE: NautilusTrader Polymarket Execution Reconciliation Procedure
+DESCRIPTION: Describes the step-by-step process NautilusTrader uses to reconcile its execution state with Polymarket's API, focusing on active orders and position reports. It highlights the limitation that Polymarket does not directly provide data for orders which are no longer active.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: Polymarket,documentation:API-reference,execution,integration,order report,position report,reconciliation
+CODE:
+```
+Polymarket Reconciliation Procedure:
+  1. Generate order reports for all instruments with active (open) orders, as reported by Polymarket.
+  2. Generate position reports from contract balances reported by Polymarket, per instruments available in the cache.
+  3. Compare these reports with Nautilus execution state.
+  4. Generate missing orders to bring Nautilus execution state in line with positions reported by Polymarket.
+
+Note: Polymarket does not directly provide data for orders which are no longer active.
+```
+----------------------------------------
+TITLE: Polymarket Integration Adapter Components Overview
+DESCRIPTION: This section outlines the key components provided by the NautilusTrader Polymarket integration adapter, which facilitate interaction with the Polymarket CLOB API for market data and trade execution. These components can be used individually or together.
+SOURCE: docs/integrations/polymarket.md
+LANGUAGE: APIDOC
+KEYWORDS: Polymarket,WebSocket,InstrumentProvider,adapters,components,documentation:API-reference,integration
+CODE:
+```
+Polymarket Integration Adapter Components:
+- PolymarketWebSocketClient:
+    Description: Low-level WebSocket API connectivity (built on top of the Nautilus WebSocketClient written in Rust).
+- PolymarketInstrumentProvider:
+    Description: Instrument parsing and loading functionality for BinaryOption instruments.
+- PolymarketDataClient:
+    Description: A market data feed manager.
+- PolymarketExecutionClient:
+    Description: A trade execution gateway.
+- PolymarketLiveDataClientFactory:
+    Description: Factory for Polymarket data clients (used by the trading node builder).
+- PolymarketLiveExecClientFactory:
+    Description: Factory for Polymarket execution clients (used by the trading node builder).
+```

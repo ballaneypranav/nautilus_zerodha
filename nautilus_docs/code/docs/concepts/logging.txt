@@ -1,0 +1,107 @@
+TITLE: Run Multiple Nautilus Trader Engines with LogGuard
+DESCRIPTION: This Python example demonstrates how to sequentially run multiple `nautilus_trader` engines within the same process while maintaining a persistent logging subsystem using a single `LogGuard` instance. It initializes `LogGuard` once from the first engine, reuses it for subsequent engines, and safely disposes each engine after its run, ensuring logs are flushed on process termination.
+SOURCE: docs/concepts/logging.md
+LANGUAGE: python
+KEYWORDS: LogGuard,backtesting,dispose,engine,logging,multiple runs
+CODE:
+```
+log_guard = None  # Initialize LogGuard reference
+
+for i in range(number_of_backtests):
+    engine = setup_engine(...)
+
+    # Assign reference to LogGuard
+    if log_guard is None:
+        log_guard = engine.get_log_guard()
+
+    # Add actors and execute the engine
+    actors = setup_actors(...)
+    engine.add_actors(actors)
+    engine.run()
+    engine.dispose()  # Dispose safely
+```
+----------------------------------------
+TITLE: Configure Trading Node Logging with Component Levels
+DESCRIPTION: Demonstrates how to configure logging for a Nautilus Trader `TradingNodeConfig` instance, including setting global log levels, file log levels, file format, and specific log levels for individual components like 'Portfolio' using the `log_component_levels` parameter. This example shows a typical setup for a trading node.
+SOURCE: docs/concepts/logging.md
+LANGUAGE: python
+KEYWORDS: LoggingConfig,TradingNodeConfig,component,configuration,log level,logging
+CODE:
+```
+from nautilus_trader.config import LoggingConfig
+from nautilus_trader.config import TradingNodeConfig
+
+config_node = TradingNodeConfig(
+    trader_id="TESTER-001",
+    logging=LoggingConfig(
+        log_level="INFO",
+        log_level_file="DEBUG",
+        log_file_format="json",
+        log_component_levels={ "Portfolio": "INFO" },
+    ),
+    ... # Omitted
+)
+```
+----------------------------------------
+TITLE: Initialize Nautilus Trader Logger Directly
+DESCRIPTION: Illustrates how to initialize the Nautilus Trader logging subsystem and obtain a `Logger` object directly, independent of `BacktestEngine` or `TradingNode`. It highlights the importance of keeping the returned `LogGuard` alive for the program's duration to ensure continuous logging functionality.
+SOURCE: docs/concepts/logging.md
+LANGUAGE: python
+KEYWORDS: LogGuard,Logger,initialization,logging,standalone
+CODE:
+```
+from nautilus_trader.common.component import init_logging
+from nautilus_trader.common.component import Logger
+
+log_guard = init_logging()
+logger = Logger("MyLogger")
+```
+----------------------------------------
+TITLE: Nautilus Trader LogGuard and init_logging API
+DESCRIPTION: Documents the purpose and usage of `LogGuard` and the `init_logging` function in Nautilus Trader. `LogGuard` ensures the logging subsystem remains active across multiple engine runs in the same process, preventing premature resource closure and subsequent logging errors.
+SOURCE: docs/concepts/logging.md
+LANGUAGE: APIDOC
+KEYWORDS: LogGuard,documentation:API-reference,init_logging,logging,persistence,process lifecycle
+CODE:
+```
+LogGuard:
+  Purpose: Ensures the logging subsystem remains active and operational throughout the lifecycle of a process, especially when running multiple engines sequentially.
+  Problem Solved: Prevents "Error sending log event" when subsequent engines lose access to the logging subsystem after the first engine is disposed.
+  Usage: Must be kept alive for the lifetime of the program to maintain consistent logging behavior.
+
+init_logging():
+  Purpose: Initializes the Nautilus Trader logging subsystem.
+  Returns: LogGuard object.
+  Constraint: Only one logging subsystem can be initialized per process with an init_logging call.
+```
+----------------------------------------
+TITLE: Nautilus Trader Log File Naming Conventions
+DESCRIPTION: Describes the default log file naming conventions in Nautilus Trader, differentiating between scenarios with and without file rotation. It also explains how custom log file names are handled, including examples for each format.
+SOURCE: docs/concepts/logging.md
+LANGUAGE: APIDOC
+KEYWORDS: convention,documentation:API-reference,file naming,logging,rotation
+CODE:
+```
+Log File Naming Convention:
+  Default (with file rotation enabled):
+    Format: {trader_id}_{%Y-%m-%d_%H%M%S:%3f}_{instance_id}.{log|json}
+    Example: TESTER-001_2025-04-09_210721:521_d7dc12c8-7008-4042-8ac4-017c3db0fc38.log
+    Components:
+      trader_id: The trader identifier (e.g., TESTER-001).
+      datetime: Full ISO 8601-compliant datetime with millisecond resolution.
+      instance_id: A unique instance identifier.
+      suffix: File suffix based on format setting (log or json).
+
+  Default (with file rotation disabled):
+    Format: {trader_id}_{%Y-%m-%d}_{instance_id}.{log|json}
+    Example: TESTER-001_2025-04-09_d7dc12c8-7008-4042-8ac4-017c3db0fc38.log
+    Components:
+      trader_id: The trader identifier.
+      date: Date only (YYYY-MM-DD).
+      instance_id: A unique instance identifier.
+      suffix: File suffix based on format setting (log or json).
+
+  Custom Naming (log_file_name set):
+    With rotation disabled: File named exactly as provided (e.g., my_custom_log.log).
+    With rotation enabled: File includes custom name and timestamp (e.g., my_custom_log_2025-04-09_210721:521.log).
+```

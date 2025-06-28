@@ -1,0 +1,293 @@
+TITLE: Writing Loaded Trade Data to Nautilus Catalog (Python)
+DESCRIPTION: This snippet writes the loaded `TradeTick` objects to the Nautilus Trader catalog. It uses a `basename_template` of '2024-01' to organize the data by month, which is a flexible choice for data partitioning within the catalog.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: ParquetDataCatalog,TradeTick,data catalog,data partitioning,data type:tick,data:persistence
+CODE:
+```
+# Write data to catalog
+catalog.write_data(trades, basename_template="2024-01")
+```
+----------------------------------------
+TITLE: Requesting and Persisting Databento Historical Data (Python)
+DESCRIPTION: Requests historical market data from Databento's `timeseries.get_range` endpoint and persists it to a specified file path. The request is only made if the file does not already exist on disk, preventing redundant data fetches and costs.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: DBN,ZST,Databento,data format,data handling,data type:historical,data:loading,data:persistence,integration
+CODE:
+```
+path = DATABENTO_DATA_DIR / "es-front-glbx-mbp10.dbn.zst"
+
+if not path.exists():
+    # Request data
+    client.timeseries.get_range(
+        dataset="GLBX.MDP3",
+        symbols=["ES.n.0"],
+        stype_in="continuous",
+        schema="mbp-10",
+        start="2023-12-06T14:30:00",
+        end="2023-12-06T20:30:00",
+        path=path  # <-- Passing a `path` parameter will ensure the data is written to disk
+    )
+```
+----------------------------------------
+TITLE: Downloading Databento Historical Trade Data to Disk (Python)
+DESCRIPTION: This snippet demonstrates how to download a month of historical AAPL trade data from Databento (XNAS.ITCH) and save it to a local file. It first constructs a file path and then conditionally requests the data using `client.timeseries.get_range` only if the file does not already exist, ensuring data is written to disk via the `path` parameter.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: DBN,ZST,Databento,data format,data handling,data type:historical,data type:tick,data:loading,data:persistence,integration
+CODE:
+```
+path = DATABENTO_DATA_DIR / "aapl-xnas-202401.trades.dbn.zst"
+
+if not path.exists():
+    # Request data
+    client.timeseries.get_range(
+        dataset="XNAS.ITCH",
+        symbols=["AAPL"],
+        schema="trades",
+        start="2024-01",
+        path=path  # <-- Passing a `path` parameter
+    )
+```
+----------------------------------------
+TITLE: Inspecting Databento DBN Data with Pandas (Python)
+DESCRIPTION: This snippet reads the downloaded Databento DBN (Databento Native) file from disk using `DBNStore.from_file` and then converts the loaded data into a pandas DataFrame. This allows for easy inspection and manipulation of the historical trade data.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: DBN,DBNStore,data format,data handling,inspection,integration:Databento,library:pandas
+CODE:
+```
+data = DBNStore.from_file(path)
+
+df = data.to_df()
+df
+```
+----------------------------------------
+TITLE: Inspecting Databento DBN Data with Pandas (Python)
+DESCRIPTION: This snippet reads the downloaded Databento DBN (Databento Native) file from disk using `DBNStore.from_file` and then converts the loaded data into a pandas DataFrame. This allows for easy inspection and manipulation of the historical trade data.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: DBN,DBNStore,data format,data handling,inspection,integration:Databento,library:pandas
+CODE:
+```
+data = DBNStore.from_file(path)
+
+df = data.to_df()
+df
+```
+----------------------------------------
+TITLE: Initializing NautilusTrader Parquet Data Catalog (Python)
+DESCRIPTION: Sets up a new NautilusTrader Parquet data catalog. It first defines the catalog's path, then clears any existing catalog at that location to ensure a clean start, and finally creates a new `ParquetDataCatalog` instance.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: ParquetDataCatalog,data catalog,data:persistence,directory management,initialization
+CODE:
+```
+CATALOG_PATH = Path.cwd() / "catalog"
+
+# Clear if it already exists
+if CATALOG_PATH.exists():
+    shutil.rmtree(CATALOG_PATH)
+CATALOG_PATH.mkdir()
+
+# Create a catalog instance
+catalog = ParquetDataCatalog(CATALOG_PATH)
+```
+----------------------------------------
+TITLE: Loading Databento DBN Data into Nautilus Objects (Python)
+DESCRIPTION: Loads Databento DBN data from a specified file path into NautilusTrader objects using the `DatabentoDataLoader`. By setting `as_legacy_cython=False`, it loads Rust pyo3 objects for improved efficiency. Providing an `instrument_id` optimizes the loading process by bypassing symbology mapping.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: DBN,Databento,DatabentoDataLoader,OrderBookDepth10,data format,data handling,data:loading,integration,pyo3
+CODE:
+```
+path = DATABENTO_DATA_DIR / "es-front-glbx-mbp10.dbn.zst"
+instrument_id = InstrumentId.from_str("ES.n.0")  # This should be the raw symbol (update)
+
+depth10 = loader.from_dbn_file(
+    path=path,
+    instrument_id=instrument_id,
+    as_legacy_cython=False
+)
+```
+----------------------------------------
+TITLE: Initializing Databento Historical Client (Python)
+DESCRIPTION: Initializes the Databento historical client. It is recommended to set the `DATABENTO_API_KEY` environment variable, which the client will implicitly use. This client is essential for making historical data requests.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: API client,authentication,data type:historical,integration:Databento
+CODE:
+```
+import databento as db
+
+
+client = db.Historical()  # This will use the DATABENTO_API_KEY environment variable (recommended best practice)
+```
+----------------------------------------
+TITLE: Reading Trade Tick Data from Nautilus Catalog by Instrument ID (Python)
+DESCRIPTION: This snippet demonstrates how to retrieve `TradeTick` data from the Nautilus Trader catalog for a specific instrument. It queries the catalog using a list containing the `instrument_id` to fetch relevant trade tick records.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: TradeTick,data catalog,data type:tick,instrument ID,query
+CODE:
+```
+trades = catalog.trade_ticks([instrument_id])
+```
+----------------------------------------
+TITLE: Requesting Databento Data Cost Quote (Python)
+DESCRIPTION: Requests a cost quote for a specific historical data range and schema from Databento's metadata API. This step is crucial for understanding potential costs before making a full data request, as `get_cost` is a free endpoint.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: API,Databento,cost estimation,integration,metadata
+CODE:
+```
+# Request cost quote (USD) - this endpoint is 'free'
+client.metadata.get_cost(
+    dataset="GLBX.MDP3",
+    symbols=["ES.n.0"],
+    stype_in="continuous",
+    schema="mbp-10",
+    start="2023-12-06T14:30:00",
+    end="2023-12-06T20:30:00"
+)
+```
+----------------------------------------
+TITLE: Writing Order Book Depth Data to Nautilus Catalog (Python)
+DESCRIPTION: This snippet demonstrates writing order book depth data (specifically MBP-10) to the Nautilus Trader catalog. It highlights the performance characteristics, noting that writing approximately 250,000 records per second takes around 20 seconds. The `depth10` variable is expected to contain the order book depth data to be stored.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: OrderBookDepth10,ParquetDataCatalog,data catalog,data type:order-book-depth,data:persistence
+CODE:
+```
+# Write data to catalog (this takes ~20 seconds or ~250,000/second for writing MBP-10 at the moment)
+catalog.write_data(depth10)
+```
+----------------------------------------
+TITLE: Reading Order Book Depth Data from Nautilus Catalog (Python)
+DESCRIPTION: This snippet shows how to read previously written order book depth 10 data from the Nautilus Trader catalog. It retrieves all available depth 10 records and then calculates the total number of records using `len()`, useful for verification or further processing.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: OrderBookDepth10,data catalog,data type:order-book-depth,query
+CODE:
+```
+# Test reading from catalog
+depths = catalog.order_book_depth10()
+len(depths)
+```
+----------------------------------------
+TITLE: Requesting Databento Historical Data Cost Quote (Python)
+DESCRIPTION: This snippet uses the Databento client to request a cost quote for historical trade data for AAPL on the Nasdaq exchange (XNAS.ITCH) for January 2024. This `get_cost` endpoint is noted as 'free' and helps in estimating the expense before a full data download.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: API,Databento,cost estimation,data type:tick,integration,metadata
+CODE:
+```
+# Request cost quote (USD) - this endpoint is 'free'
+client.metadata.get_cost(
+    dataset="XNAS.ITCH",
+    symbols=["AAPL"],
+    schema="trades",
+    start="2024-01",
+)
+```
+----------------------------------------
+TITLE: Loading Databento DBN File into Nautilus TradeTick Objects (Python)
+DESCRIPTION: This snippet loads historical trade data from a Databento DBN file into Nautilus `TradeTick` objects. It explicitly sets the `instrument_id` to 'AAPL.XNAS' to optimize loading by bypassing symbology mapping and sets `as_legacy_cython` to `False` for improved efficiency when preparing data for the catalog.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: DBN,Databento,DatabentoDataLoader,TradeTick,data format,data handling,data type:tick,data:loading,integration,pyo3
+CODE:
+```
+instrument_id = InstrumentId.from_str("AAPL.XNAS")
+
+trades = loader.from_dbn_file(
+    path=path,
+    instrument_id=instrument_id,
+    as_legacy_cython=False,
+)
+```
+----------------------------------------
+TITLE: Initializing DatabentoDataLoader (Python)
+DESCRIPTION: Initializes an instance of `DatabentoDataLoader`. This loader is responsible for decoding raw Databento DBN data into NautilusTrader objects, preparing it for ingestion into the data catalog.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: Databento,DatabentoDataLoader,data:loading,initialization,integration
+CODE:
+```
+loader = DatabentoDataLoader()
+```
+----------------------------------------
+TITLE: Preparing Databento Data Directory (Python)
+DESCRIPTION: Defines a `Path` object for the Databento data directory and creates it if it doesn't already exist. This directory will store the raw Databento DBN format data files.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: Databento,data:persistence,directory management,integration
+CODE:
+```
+DATABENTO_DATA_DIR = Path("databento")
+DATABENTO_DATA_DIR.mkdir(exist_ok=True)
+```
+----------------------------------------
+TITLE: Importing Pathlib and DBNStore (Python)
+DESCRIPTION: Imports the `Path` class from `pathlib` for file system operations and `DBNStore` from `databento` for reading and inspecting DBN format data files.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: DBNStore,dev:imports,development,integration:Databento,pathlib
+CODE:
+```
+from pathlib import Path
+
+from databento import DBNStore
+```
+----------------------------------------
+TITLE: Importing NautilusTrader Catalog Dependencies (Python)
+DESCRIPTION: Imports necessary modules for managing and loading data into a NautilusTrader data catalog. This includes `shutil` for directory operations, `Path` for file paths, `DatabentoDataLoader` for decoding Databento data, `InstrumentId` for instrument identification, and `ParquetDataCatalog` for creating the data catalog.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: DatabentoDataLoader,ParquetDataCatalog,data catalog,dev:imports,development,shutil
+CODE:
+```
+import shutil
+from pathlib import Path
+
+from nautilus_trader.adapters.databento.loaders import DatabentoDataLoader
+from nautilus_trader.model import InstrumentId
+from nautilus_trader.persistence.catalog import ParquetDataCatalog
+```
+----------------------------------------
+TITLE: Counting Retrieved Trade Tick Records (Python)
+DESCRIPTION: This snippet calculates and displays the total number of `TradeTick` records that were retrieved from the Nautilus Trader catalog in the preceding step. It uses the `len()` function to provide a quick count of the loaded trade data.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: python
+KEYWORDS: Databento,TradeTick,count,data handling,data type:tick,dev:verification,development,integration
+CODE:
+```
+len(trades)
+```
+----------------------------------------
+TITLE: Inspecting Databento DBN Data with Pandas (Python)
+DESCRIPTION: Reads the persisted Databento DBN file from disk using `DBNStore.from_file` and converts it into a pandas DataFrame for easy inspection and analysis. This allows users to verify the loaded data's structure and content.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: DBN,DBNStore,data format,data handling,inspection,integration:Databento,library:pandas
+CODE:
+```
+data = DBNStore.from_file(path)
+
+df = data.to_df()
+df
+```
+----------------------------------------
+TITLE: Inspecting Databento DBN Data with Pandas (Python)
+DESCRIPTION: Reads the persisted Databento DBN file from disk using `DBNStore.from_file` and converts it into a pandas DataFrame for easy inspection and analysis. This allows users to verify the loaded data's structure and content.
+SOURCE: docs/tutorials/databento_data_catalog.ipynb
+LANGUAGE: Python
+KEYWORDS: DBN,DBNStore,data format,data handling,inspection,integration:Databento,library:pandas
+CODE:
+```
+data = DBNStore.from_file(path)
+
+df = data.to_df()
+df
+```

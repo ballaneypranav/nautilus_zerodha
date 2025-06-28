@@ -1,0 +1,191 @@
+TITLE: Defining Live Execution Client Interface Nautilus Trader Python
+DESCRIPTION: This Python class provides a template for implementing a `LiveExecutionClient` in Nautilus Trader. It outlines the required asynchronous methods for managing connections (`_connect`, `_disconnect`), handling orders (`_submit_order`, `_modify_order`, `_cancel_order`, `_cancel_all_orders`, `_batch_cancel_orders`), and generating reports (`generate_order_status_report`, `generate_order_status_reports`, `generate_fill_reports`, `generate_position_status_reports`). Each method raises `NotImplementedError`, indicating they must be implemented by a concrete adapter subclass.
+SOURCE: docs/developer_guide/adapters.md
+LANGUAGE: python
+KEYWORDS: LiveExecutionClient,client:execution,dev:API-design,development,interface,live trading,template
+CODE:
+```
+from nautilus_trader.execution.messages import BatchCancelOrders, CancelAllOrders, CancelOrder, ModifyOrder, SubmitOrder
+from nautilus_trader.execution.reports import FillReport, OrderStatusReport, PositionStatusReport
+from nautilus_trader.live.execution_client import LiveExecutionClient
+from nautilus_trader.model import ClientOrderId, InstrumentId, VenueOrderId
+
+class TemplateLiveExecutionClient(LiveExecutionClient):
+    """
+    An example of a ``LiveExecutionClient`` highlighting the method requirements.
+    """
+
+    async def _connect(self) -> None:
+        raise NotImplementedError("implement `_connect` in your adapter subclass")
+
+    async def _disconnect(self) -> None:
+        raise NotImplementedError("implement `_disconnect` in your adapter subclass")
+
+    async def _submit_order(self, command: SubmitOrder) -> None:
+        raise NotImplementedError("implement `_submit_order` in your adapter subclass")
+
+    async def _modify_order(self, command: ModifyOrder) -> None:
+        raise NotImplementedError("implement `_modify_order` in your adapter subclass")
+
+    async def _cancel_order(self, command: CancelOrder) -> None:
+        raise NotImplementedError("implement `_cancel_order` in your adapter subclass")
+
+    async def _cancel_all_orders(self, command: CancelAllOrders) -> None:
+        raise NotImplementedError("implement `_cancel_all_orders` in your adapter subclass")
+
+    async def _batch_cancel_orders(self, command: BatchCancelOrders) -> None:
+        raise NotImplementedError("implement `_batch_cancel_orders` in your adapter subclass")
+
+    async def generate_order_status_report(
+        self, instrument_id: InstrumentId, client_order_id: ClientOrderId | None = None, venue_order_id: VenueOrderId | None = None
+    ) -> OrderStatusReport | None:
+        raise NotImplementedError("method `generate_order_status_report` must be implemented in the subclass")
+
+    async def generate_order_status_reports(
+        self, instrument_id: InstrumentId | None = None, start: pd.Timestamp | None = None, end: pd.Timestamp | None = None, open_only: bool = False
+    ) -> list[OrderStatusReport]:
+        raise NotImplementedError("method `generate_order_status_reports` must be implemented in the subclass")
+
+    async def generate_fill_reports(
+        self, instrument_id: InstrumentId | None = None, venue_order_id: VenueOrderId | None = None, start: pd.Timestamp | None = None, end: pd.Timestamp | None = None
+    ) -> list[FillReport]:
+        raise NotImplementedError("method `generate_fill_reports` must be implemented in the subclass")
+
+    async def generate_position_status_reports(
+        self, instrument_id: InstrumentId | None = None, start: pd.Timestamp | None = None, end: pd.Timestamp | None = None
+    ) -> list[PositionStatusReport]:
+        raise NotImplementedError("method `generate_position_status_reports` must be implemented in the subclass")
+```
+----------------------------------------
+TITLE: Implementing InstrumentProvider in Python
+DESCRIPTION: The `InstrumentProvider` supplies instrument definitions available on the venue. This includes loading all available instruments, specific instruments by ID, and applying filters to the instrument list. Key methods include `load_all_async` for loading all instruments, `load_ids_async` for loading by IDs, and `load_async` for loading a single instrument by ID.
+SOURCE: docs/developer_guide/adapters.md
+LANGUAGE: python
+KEYWORDS: InstrumentProvider,dev:API-design,development,interface,integration,instrument provider,template
+CODE:
+```
+from nautilus_trader.common.providers import InstrumentProvider
+from nautilus_trader.model import InstrumentId
+
+class TemplateInstrumentProvider(InstrumentProvider):
+    """
+    An example template of an ``InstrumentProvider`` showing the minimal methods which must be implemented for an integration to be complete.
+    """
+
+    async def load_all_async(self, filters: dict | None = None) -> None:
+        raise NotImplementedError("implement `load_all_async` in your adapter subclass")
+
+    async def load_ids_async(self, instrument_ids: list[InstrumentId], filters: dict | None = None) -> None:
+        raise NotImplementedError("implement `load_ids_async` in your adapter subclass")
+
+    async def load_async(self, instrument_id: InstrumentId, filters: dict | None = None) -> None:
+        raise NotImplementedError("implement `load_async` in your adapter subclass")
+```
+----------------------------------------
+TITLE: Defining Adapter Configuration Nautilus Trader Python
+DESCRIPTION: These Python classes define the configuration structure for Nautilus Trader adapter clients. `TemplateDataClientConfig` and `TemplateExecClientConfig` inherit from base configuration classes and include common attributes like `api_key`, `api_secret`, and `base_url`, which are essential for authenticating and connecting to external data providers or trading venues.
+SOURCE: docs/developer_guide/adapters.md
+LANGUAGE: python
+KEYWORDS: LiveDataClientConfig,LiveExecClientConfig,configuration,dev:API-design,development,integration,template
+CODE:
+```
+from nautilus_trader.config import LiveDataClientConfig, LiveExecClientConfig
+
+class TemplateDataClientConfig(LiveDataClientConfig):
+    """
+    Configuration for ``TemplateDataClient`` instances.
+    """
+
+    api_key: str
+    api_secret: str
+    base_url: str
+
+class TemplateExecClientConfig(LiveExecClientConfig):
+    """
+    Configuration for ``TemplateExecClient`` instances.
+    """
+
+    api_key: str
+    api_secret: str
+    base_url: str
+```
+----------------------------------------
+TITLE: Defining Template Live Market Data Client - Python
+DESCRIPTION: This Python code defines a template class, `TemplateLiveMarketDataClient`, which inherits from `LiveMarketDataClient`. It serves as an example highlighting the abstract methods that must be overridden in a concrete implementation to handle connection, disconnection, state management, and market data subscriptions.
+SOURCE: docs/developer_guide/adapters.md
+LANGUAGE: python
+KEYWORDS: LiveMarketDataClient,client:data,dev:API-design,development,interface,live trading,template
+CODE:
+```
+from nautilus_trader.live.data_client import LiveMarketDataClient
+from nautilus_trader.model import BarType, DataType
+from nautilus_trader.model import InstrumentId
+from nautilus_trader.model.enums import BookType
+
+class TemplateLiveMarketDataClient(LiveMarketDataClient):
+    """
+    An example of a ``LiveMarketDataClient`` highlighting the overridable abstract methods.
+    """
+
+    async def _connect(self) -> None:
+        raise NotImplementedError("implement `_connect` in your adapter subclass")
+
+    async def _disconnect(self) -> None:
+        raise NotImplementedError("implement `_disconnect` in your adapter subclass")
+
+    def reset(self) -> None:
+        raise NotImplementedError("implement `reset` in your adapter subclass")
+
+    def dispose(self) -> None:
+        raise NotImplementedError("implement `dispose` in your adapter subclass")
+
+    async def _subscribe_instruments(self) -> None:
+        raise NotImplementedError("implement `_subscribe_instruments` in your adapter subclass")
+
+    async def _unsubscribe_instruments(self) -> None:
+        raise NotImplementedError("implement `_unsubscribe_instruments` in your adapter subclass")
+
+    async def _subscribe_order_book_deltas(self, instrument_id: InstrumentId, book_type: BookType, depth: int | None = None, kwargs: dict | None = None) -> None:
+        raise NotImplementedError("implement `_subscribe_order_book_deltas` in your adapter subclass")
+
+    async def _unsubscribe_order_book_deltas(self, instrument_id: InstrumentId) -> None:
+        raise NotImplementedError("implement `_unsubscribe_order_book_deltas` in your adapter subclass")
+```
+----------------------------------------
+TITLE: Implementing LiveDataClient in Python
+DESCRIPTION: The `LiveDataClient` handles the subscription and management of data feeds that are not specifically related to market data. This might include news feeds, custom data streams, or other data sources that enhance trading strategies. Key methods include `_connect` and `_disconnect` for managing the connection, `reset` and `dispose` for state management, `_subscribe` and `_unsubscribe` for data type subscriptions, and `_request` for requesting data.
+SOURCE: docs/developer_guide/adapters.md
+LANGUAGE: python
+KEYWORDS: LiveDataClient,client:data,dev:API-design,development,interface,live trading,template
+CODE:
+```
+from nautilus_trader.live.data_client import LiveDataClient
+from nautilus_trader.model import DataType
+from nautilus_trader.core import UUID4
+
+class TemplateLiveDataClient(LiveDataClient):
+    """
+    An example of a ``LiveDataClient`` highlighting the overridable abstract methods.
+    """
+
+    async def _connect(self) -> None:
+        raise NotImplementedError("implement `_connect` in your adapter subclass")
+
+    async def _disconnect(self) -> None:
+        raise NotImplementedError("implement `_disconnect` in your adapter subclass")
+
+    def reset(self) -> None:
+        raise NotImplementedError("implement `reset` in your adapter subclass")
+
+    def dispose(self) -> None:
+        raise NotImplementedError("implement `dispose` in your adapter subclass")
+
+    async def _subscribe(self, data_type: DataType) -> None:
+        raise NotImplementedError("implement `_subscribe` in your adapter subclass")
+
+    async def _unsubscribe(self, data_type: DataType) -> None:
+        raise NotImplementedError("implement `_unsubscribe` in your adapter subclass")
+
+    async def _request(self, data_type: DataType, correlation_id: UUID4) -> None:
+        raise NotImplementedError("implement `_request` in your adapter subclass")
+```

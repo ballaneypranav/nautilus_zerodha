@@ -1,0 +1,27 @@
+TITLE: API Documentation Best Practices
+DESCRIPTION: This section outlines the best practices for documenting APIs within NautilusTrader's ecosystem. It emphasizes the importance of clarity and completeness when detailing parameters, return types, and usage examples for complex APIs. Additionally, it highlights the need to explain any side effects or important behaviors, ensuring parameter descriptions remain concise yet comprehensive.
+SOURCE: docs/developer_guide/docs.md
+LANGUAGE: APIDOC
+KEYWORDS: dev:best-practice,dev:documentation,development,documentation:API-reference,style guide
+CODE:
+```
+API Documentation Guidelines:
+  - Document parameters and return types clearly.
+  - Include usage examples for complex APIs.
+  - Explain any side effects or important behavior.
+  - Keep parameter descriptions concise but complete.
+```
+----------------------------------------
+TITLE: Markdown Table Example for Feature Support
+DESCRIPTION: This example demonstrates the recommended style for creating markdown tables within NautilusTrader documentation. It showcases best practices for column alignment, consistent spacing, and the use of specific support indicators like '✓' for supported and '-' for unsupported features. The table illustrates how to clearly present feature compatibility across different order types and trading contexts, including concise notes for specific limitations.
+SOURCE: docs/developer_guide/docs.md
+LANGUAGE: markdown
+KEYWORDS: dev:best-practice,dev:documentation,development,markdown,style guide,tables
+CODE:
+```
+| Order Type             | Spot | Margin | USDT Futures | Coin Futures | Notes                   |
+|------------------------|------|--------|--------------|--------------|-------------------------|
+| `MARKET`               | ✓    | ✓      | ✓            | ✓            |                         |
+| `STOP_MARKET`          | -    | ✓      | ✓            | ✓            | Not supported for Spot. |
+| `MARKET_IF_TOUCHED`    | -    | -      | ✓            | ✓            | Futures only.           |
+```

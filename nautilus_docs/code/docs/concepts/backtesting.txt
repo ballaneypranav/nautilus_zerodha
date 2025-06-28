@@ -1,0 +1,83 @@
+TITLE: Configuring Adaptive Bar Ordering for Backtest Venue (Python)
+DESCRIPTION: This snippet demonstrates how to initialize the BacktestEngine and add a trading venue with adaptive high/low bar ordering enabled. It configures the venue with OmsType.NETTING, AccountType.CASH, and a starting balance, setting bar_adaptive_high_low_ordering to True to allow the engine to estimate the likely price path within a bar. This is crucial for accurate simulation of order fills when both take-profit and stop-loss levels are hit within the same bar.
+SOURCE: docs/concepts/backtesting.md
+LANGUAGE: Python
+KEYWORDS: backtesting,cash account,configuration,feature:adaptive-bar-ordering,feature:order-fill-simulation,venue
+CODE:
+```
+from nautilus_trader.backtest.engine import BacktestEngine
+from nautilus_trader.model.enums import OmsType, AccountType
+from nautilus_trader.model import Money, Currency
+
+# Initialize the backtest engine
+engine = BacktestEngine()
+
+# Add a venue with adaptive bar ordering and required account settings
+engine.add_venue(
+    venue=venue,  # Your Venue identifier, e.g., Venue("BINANCE")
+    oms_type=OmsType.NETTING,
+    account_type=AccountType.CASH,
+    starting_balances=[Money(10_000, Currency.from_str("USDT"))],
+    bar_adaptive_high_low_ordering=True  # Enable adaptive ordering of High/Low bar prices
+)
+```
+----------------------------------------
+TITLE: Configuring Backtest Engine with Custom Fill Model (Python)
+DESCRIPTION: This snippet demonstrates how to initialize the `BacktestEngine` in Nautilus_trader, injecting a custom `fill_model` into its configuration. The `fill_model` is crucial for simulating realistic order execution dynamics during backtesting, allowing users to define how orders are filled and slippage is applied. It requires an instance of `BacktestEngineConfig` and a pre-defined `fill_model` object.
+SOURCE: docs/concepts/backtesting.md
+LANGUAGE: Python
+KEYWORDS: BacktestEngine,BacktestEngineConfig,backtesting,configuration,customization,feature:order-fill-simulation,order execution,slippage
+CODE:
+```
+engine = BacktestEngine(
+    config=BacktestEngineConfig(
+        trader_id="TESTER-001",
+        fill_model=fill_model  # Inject your custom fill model here
+    )
+)
+```
+----------------------------------------
+TITLE: Customizing FillModel for Probabilistic Order Execution (Python)
+DESCRIPTION: This code illustrates how to create a custom FillModel instance to simulate probabilistic order execution during backtesting. It allows setting prob_fill_on_limit for limit order fills, prob_slippage for market order slippage (especially relevant for L1 data), and an optional random_seed for reproducibility. This model helps account for queue position and market impact, which are not fully captured by historical data alone.
+SOURCE: docs/concepts/backtesting.md
+LANGUAGE: Python
+KEYWORDS: FillModel,backtesting,customization,feature:order-fill-simulation,order execution,probabilistic fill,reproducibility,slippage
+CODE:
+```
+from nautilus_trader.backtest.models import FillModel
+from nautilus_trader.backtest.engine import BacktestEngine
+from nautilus_trader.backtest.engine import BacktestEngineConfig
+
+# Create a custom fill model with your desired probabilities
+fill_model = FillModel(
+    prob_fill_on_limit=0.2,    # Chance a limit order fills when price matches (applied to bars/trades/quotes + L1/L2/L3 order book)
+    prob_fill_on_stop=0.95,    # [DEPRECATED] Will be removed in a future version, use `prob_slippage` instead
+    prob_slippage=0.5,         # Chance of 1-tick slippage (applied to bars/trades/quotes + L1 order book only)
+    random_seed=None           # Optional: Set for reproducible results
+)
+```
+----------------------------------------
+TITLE: Adding a Cash Account to Nautilus Trader Backtest Engine (Python)
+DESCRIPTION: This snippet demonstrates how to add a CASH account to a BacktestEngine in Nautilus Trader. It initializes the engine and then uses add_venue to configure the venue with a CASH account type and a starting balance of 10,000 USDT. This setup is typical for spot trading simulations where no leverage is involved.
+SOURCE: docs/concepts/backtesting.md
+LANGUAGE: python
+KEYWORDS: add_venue,backtesting,cash account,configuration,spot trading,venue
+CODE:
+```
+from nautilus_trader.adapters.binance import BINANCE_VENUE
+from nautilus_trader.backtest.engine import BacktestEngine
+from nautilus_trader.model.currencies import USDT
+from nautilus_trader.model.enums import OmsType, AccountType
+from nautilus_trader.model import Money, Currency
+
+# Initialize the backtest engine
+engine = BacktestEngine()
+
+# Add a CASH account for the venue
+engine.add_venue(
+    venue=BINANCE_VENUE,  # Create or reference a Venue identifier
+    oms_type=OmsType.NETTING,
+    account_type=AccountType.CASH,
+    starting_balances=[Money(10_000, USDT)],
+)
+```

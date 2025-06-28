@@ -1,0 +1,111 @@
+TITLE: Configuring Message Bus for NautilusTrader (Python)
+DESCRIPTION: This snippet demonstrates how to configure the message bus using `MessageBusConfig` for routing messages and external streaming. It includes settings for database timeout, timestamp format, message type filtering (e.g., `QuoteTick`, `TradeTick`), automatic trimming, and heartbeat intervals.
+SOURCE: docs/concepts/live.md
+LANGUAGE: Python
+KEYWORDS: DatabaseConfig,MessageBusConfig,QuoteTick,TradeTick,configuration,data type:tick,feature:type-filter,live trading,message bus
+CODE:
+```
+from nautilus_trader.config import MessageBusConfig
+from nautilus_trader.config import DatabaseConfig
+
+message_bus_config = MessageBusConfig(
+    database=DatabaseConfig(timeout=2),
+    timestamps_as_iso8601=True,
+    use_instance_id=False,
+    types_filter=[QuoteTick, TradeTick],  # Filter specific message types
+    stream_per_topic=False,
+    autotrim_mins=30,  # Automatic message trimming
+    heartbeat_interval_secs=1,
+)
+```
+----------------------------------------
+TITLE: Initializing TradingNodeConfig for Live Trading (Python)
+DESCRIPTION: This snippet demonstrates how to initialize the `TradingNodeConfig` class, which is central to live trading systems in NautilusTrader. It shows how to configure various components like cache, message bus, data engine, risk engine, execution engine, and portfolio, as well as specific data and execution clients (e.g., Binance).
+SOURCE: docs/concepts/live.md
+LANGUAGE: Python
+KEYWORDS: Binance,TradingNodeConfig,cache,client:data,client:execution,configuration,integration,live trading,message bus,portfolio
+CODE:
+```
+from nautilus_trader.config import TradingNodeConfig
+
+config = TradingNodeConfig(
+    trader_id="MyTrader-001",
+
+    # Component configurations
+    cache: CacheConfig(),
+    message_bus: MessageBusConfig(),
+    data_engine=LiveDataEngineConfig(),
+    risk_engine=LiveRiskEngineConfig(),
+    exec_engine=LiveExecEngineConfig(),
+    portfolio=PortfolioConfig(),
+
+    # Client configurations
+    data_clients={
+        "BINANCE": BinanceDataClientConfig(),
+    },
+    exec_clients={
+        "BINANCE": BinanceExecClientConfig(),
+    },
+)
+```
+----------------------------------------
+TITLE: Configuring Cache Database for NautilusTrader (Python)
+DESCRIPTION: This snippet illustrates how to configure data persistence for the cache using `CacheConfig` and `DatabaseConfig`. It specifies database connection details like host, port, username, password, and timeout, along with encoding and buffer settings for the cache.
+SOURCE: docs/concepts/live.md
+LANGUAGE: Python
+KEYWORDS: CacheConfig,DatabaseConfig,cache,configuration,data:persistence,live trading,msgpack
+CODE:
+```
+from nautilus_trader.config import CacheConfig
+from nautilus_trader.config import DatabaseConfig
+
+cache_config = CacheConfig(
+    database=DatabaseConfig(
+        host="localhost",
+        port=6379,
+        username="nautilus",
+        password="pass",
+        timeout=2.0,
+    ),
+    encoding="msgpack",  # or "json"
+    timestamps_as_iso8601=True,
+    buffer_interval_ms=100,
+    flush_on_start=False,
+)
+```
+----------------------------------------
+TITLE: Configuring Multi-venue Trading with TradingNodeConfig (Python)
+DESCRIPTION: This snippet shows how to configure `TradingNodeConfig` to connect to multiple venues or market types, specifically for Binance spot and futures markets. It demonstrates setting up separate `BinanceDataClientConfig` and `BinanceExecClientConfig` instances for each account type.
+SOURCE: docs/concepts/live.md
+LANGUAGE: Python
+KEYWORDS: Binance,TradingNodeConfig,client:data,client:execution,configuration,feature:multi-venue,futures,integration,live trading,spot
+CODE:
+```
+config = TradingNodeConfig(
+    trader_id="MultiVenue-001",
+
+    # Multiple data clients for different market types
+    data_clients={
+        "BINANCE_SPOT": BinanceDataClientConfig(
+            account_type=BinanceAccountType.SPOT,
+            testnet=False,
+        ),
+        "BINANCE_FUTURES": BinanceDataClientConfig(
+            account_type=BinanceAccountType.USDT_FUTURE,
+            testnet=False,
+        ),
+    },
+
+    # Corresponding execution clients
+    exec_clients={
+        "BINANCE_SPOT": BinanceExecClientConfig(
+            account_type=BinanceAccountType.SPOT,
+            testnet=False,
+        ),
+        "BINANCE_FUTURES": BinanceExecClientConfig(
+            account_type=BinanceAccountType.USDT_FUTURE,
+            testnet=False,
+        ),
+    },
+)
+```

@@ -1,0 +1,438 @@
+TITLE: Rust Error Handling: Preferring anyhow::bail! for Early Returns
+DESCRIPTION: This example shows the preferred method for early returns with errors using the `anyhow::bail!` macro. It provides a concise and idiomatic way to propagate errors, contrasting with more verbose `return Err(...)` statements. Note that `anyhow::bail!` is for direct returns, while `anyhow::anyhow!` is used in closure contexts.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:error-handling,development,feature:early-return,library:anyhow
+CODE:
+```
+// Preferred - using bail! for early returns
+pub fn process_value(value: i32) -> anyhow::Result<i32> {
+    if value < 0 {
+        anyhow::bail!("Value cannot be negative: {value}");
+    }
+    Ok(value * 2)
+}
+
+// Instead of - verbose return statement
+if value < 0 {
+    return Err(anyhow::anyhow!("Value cannot be negative: {value}"));
+}
+```
+----------------------------------------
+TITLE: Rust Error Handling: Custom Error Types with thiserror
+DESCRIPTION: Illustrates how to define domain-specific error types using the `thiserror` crate. This allows for structured and descriptive error variants, improving error clarity and enabling more precise error handling within specific modules or functionalities.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: customization,dev:error-handling,development,library:thiserror
+CODE:
+```
+#[derive(Error, Debug)]
+pub enum NetworkError {
+    #[error("Connection failed: {0}")]
+    ConnectionFailed(String),
+    #[error("Timeout occurred")]
+    Timeout,
+}
+```
+----------------------------------------
+TITLE: Organizing Rust Tests with Module Structure
+DESCRIPTION: This snippet shows the recommended structure for Rust test modules. Tests are encapsulated within a `mod tests` block, conditionally compiled with `#[cfg(test)]`, and separated by clear comments for readability and maintainability.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:testing,development,language:rust,library:rstest,modules,test structure
+CODE:
+```
+////////////////////////////////////////////////////////////////////////////////
+// Tests
+////////////////////////////////////////////////////////////////////////////////
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+    use super::*;
+    use crate::identifiers::{Symbol, stubs::*};
+
+    #[rstest]
+    fn test_string_reprs(symbol_eth_perp: Symbol) {
+        assert_eq!(symbol_eth_perp.as_str(), "ETH-PERP");
+        assert_eq!(format!("{symbol_eth_perp}"), "ETH-PERP");
+    }
+}
+```
+----------------------------------------
+TITLE: Rust Error Handling: Primary Pattern with anyhow::Result
+DESCRIPTION: This snippet demonstrates the primary error handling pattern in Rust, utilizing `anyhow::Result<T>` for functions that may fail. This approach simplifies error propagation and provides a flexible, ergonomic error type for common use cases.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: Result,dev:best-practice,dev:error-handling,development,language:rust,library:anyhow
+CODE:
+```
+pub fn calculate_balance(&mut self) -> anyhow::Result<Money> {
+    // Implementation
+}
+```
+----------------------------------------
+TITLE: Rust Constant Naming Conventions and Examples
+DESCRIPTION: Demonstrates the `SCREAMING_SNAKE_CASE` convention for naming constants in Rust, providing examples for a numeric constant and a complex struct constant.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: SCREAMING_SNAKE_CASE,constants,dev:coding-standards,development,language:rust,naming conventions
+CODE:
+```
+/// Number of nanoseconds in one second.
+pub const NANOSECONDS_IN_SECOND: u64 = 1_000_000_000;
+
+/// Bar specification for 1-minute last price bars.
+pub const BAR_SPEC_1_MINUTE_LAST: BarSpecification = BarSpecification {
+    step: NonZero::new(1).unwrap(),
+    aggregation: BarAggregation::Minute,
+    price_type: PriceType::Last,
+};
+```
+----------------------------------------
+TITLE: Rust Attribute Patterns: Extensive Enum Attributes
+DESCRIPTION: Illustrates the consistent usage and ordering of attributes for Rust enums, particularly those with extensive derive macros. This includes `#[repr(C)]`, a wide range of common derives, `strum` attributes for string conversions, and `pyo3::pyclass` for Python bindings, along with documentation comments for enum variants.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: attributes,derive,dev:coding-standards,development,enum,language:rust,pyclass,strum
+CODE:
+```
+#[repr(C)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Display,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    AsRefStr,
+    FromRepr,
+    EnumIter,
+    EnumString,
+)]
+#[strum(ascii_case_insensitive)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(eq, eq_int, module = "nautilus_trader.core.nautilus_pyo3.model.enums")
+)]
+pub enum AccountType {
+    /// An account with unleveraged cash assets only.
+    Cash = 1,
+    /// An account which facilitates trading on margin, using account assets as collateral.
+    Margin = 2,
+}
+```
+----------------------------------------
+TITLE: Documenting Unsafe Rust Trait Implementations
+DESCRIPTION: This snippet illustrates the required `SAFETY:` comment for `unsafe impl` blocks, which implement unsafe traits. It explains the rationale behind the unsafe operation, ensuring that the contract between the trait and its implementation is clearly documented.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: SAFETY,dev:coding-standards,dev:documentation,development,impl,language:rust,trait,unsafe
+CODE:
+```
+// SAFETY: Message bus is not meant to be passed between threads
+#[allow(unsafe_code)]
+unsafe impl Send for MessageBus {}
+```
+----------------------------------------
+TITLE: Rust Attribute Patterns: Struct Attributes
+DESCRIPTION: Demonstrates the consistent usage and ordering of attributes for Rust structs within the project. This includes `#[repr(C)]` for C-compatible memory layout, common derive macros like `Clone`, `Copy`, `Debug`, `Hash`, `PartialEq`, `Eq`, `PartialOrd`, `Ord`, and `#[cfg_attr(feature = "python", pyo3::pyclass(...))]` for conditional Python bindings.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: attributes,derive,dev:coding-standards,development,language:rust,pyclass,struct
+CODE:
+```
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(module = "nautilus_trader.core.nautilus_pyo3.model")
+)]
+pub struct Symbol(Ustr);
+```
+----------------------------------------
+TITLE: Rust Module-Level Documentation for Feature Flags
+DESCRIPTION: Details how to clearly document feature flags within module-level documentation, explaining their purpose and listing specific flags like `ffi`, `python`, and `stubs`.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:coding-standards,dev:documentation,development,feature flags,language:rust,modules
+CODE:
+```
+//! # Feature flags
+//!
+//! This crate provides feature flags to control source code inclusion during compilation,
+//! depending on the intended use case:
+//!
+//! - `ffi`: Enables the C foreign function interface (FFI) from [cbindgen](https://github.com/mozilla/cbindgen).
+//! - `python`: Enables Python bindings from [PyO3](https://pyo3.rs).
+//! - `stubs`: Enables type stubs for use in testing scenarios.
+```
+----------------------------------------
+TITLE: Rust Multi-Line Error and Panic Documentation Format
+DESCRIPTION: Defines the format for multi-line error and panic documentation, requiring sentence case with bullets and terminating periods for detailed explanations of conditions.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:best-practice,dev:coding-standards,dev:documentation,development,errors,language:rust,panics
+CODE:
+```
+/// Calculates the unrealized profit and loss for the position.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The market price for the instrument cannot be found.
+/// - The conversion rate calculation fails.
+/// - Invalid position state is encountered.
+///
+/// # Panics
+///
+/// This function will panic if:
+/// - The instrument ID is invalid or uninitialized.
+/// - Required market data is missing from the cache.
+/// - Internal state consistency checks fail.
+pub fn calculate_unrealized_pnl(&self, market_price: Price) -> anyhow::Result<Money> {
+    // Implementation
+}
+```
+----------------------------------------
+TITLE: Rust Test Naming Conventions
+DESCRIPTION: This snippet provides examples of descriptive naming conventions for Rust test functions. Test names should clearly explain the specific scenario or behavior being tested, improving readability and understanding of test failures.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:coding-standards,dev:testing,development,language:rust,naming conventions
+CODE:
+```
+fn test_sma_with_no_inputs()
+fn test_sma_with_single_input()
+fn test_symbol_is_composite()
+```
+----------------------------------------
+TITLE: Rust Correctness Check Constant Usage
+DESCRIPTION: Illustrates the consistent use of the `FAILED` constant for `.expect()` messages when handling correctness checks, ensuring standardized error messages.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: FAILED,correctness,dev:coding-standards,development,expect,language:rust
+CODE:
+```
+use nautilus_core::correctness::FAILED;
+```
+----------------------------------------
+TITLE: Rust Error Handling: Error Message Formatting with Inline Variables
+DESCRIPTION: This snippet highlights the preferred practice of using inline format strings with variable names for error messages. This approach significantly enhances readability and self-documentation, especially when multiple variables are involved, making error messages clearer and easier to debug.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: bail,dev:coding-standards,dev:error-handling,development,formatting,language:rust,library:anyhow
+CODE:
+```
+// Preferred - inline format with variable names
+anyhow::bail!("Failed to subtract {n} months from {datetime}");
+
+// Instead of - positional arguments
+anyhow::bail!("Failed to subtract {} months from {}", n, datetime);
+```
+----------------------------------------
+TITLE: Documenting Unsafe Rust Functions with Safety Section
+DESCRIPTION: This snippet demonstrates the required documentation format for `unsafe` Rust functions. It shows how to use a `/// # Safety` section to explain why the function is unsafe and what invariants the caller must uphold, ensuring correct usage and preventing undefined behavior.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: SAFETY,dev:coding-standards,dev:documentation,development,function,language:rust,unsafe
+CODE:
+```
+/// Creates a new instance from raw components without validation.
+///
+/// # Safety
+///
+/// The caller must ensure that all input parameters are valid and properly initialized.
+pub unsafe fn from_raw_parts(ptr: *const u8, len: usize) -> Self {
+    // SAFETY: Caller guarantees ptr is valid and len is correct
+    Self {
+        data: std::slice::from_raw_parts(ptr, len),
+    }
+}
+```
+----------------------------------------
+TITLE: Rust Single-Line Error and Panic Documentation Format
+DESCRIPTION: Specifies the sentence case convention for documenting single-line error and panic conditions within function documentation, ensuring consistency.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:best-practice,dev:coding-standards,dev:documentation,development,errors,language:rust,panics
+CODE:
+```
+/// Returns a reference to the `AccountBalance` for the specified currency, or `None` if absent.
+///
+/// # Errors
+///
+/// Returns an error if the currency conversion fails.
+///
+/// # Panics
+///
+/// Panics if `currency` is `None` and `self.base_currency` is `None`.
+pub fn base_balance(&self, currency: Option<Currency>) -> anyhow::Result<Option<&AccountBalance>> {
+    // Implementation
+}
+```
+----------------------------------------
+TITLE: Implementing Parameterized Tests in Rust with rstest
+DESCRIPTION: This example demonstrates how to write parameterized tests in Rust using the `rstest` crate. The `#[case]` attribute allows defining multiple test cases with different inputs and expected outputs, reducing boilerplate and improving test coverage.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: case,dev:testing,development,language:rust,parameterized tests,rstest
+CODE:
+```
+#[rstest]
+#[case("AUDUSD", false)]
+#[case("AUD/USD", false)]
+#[case("CL.FUT", true)]
+fn test_symbol_is_composite(#[case] input: &str, #[case] expected: bool) {
+    let symbol = Symbol::new(input);
+    assert_eq!(symbol.is_composite(), expected);
+}
+```
+----------------------------------------
+TITLE: Rust Re-export Organization Patterns
+DESCRIPTION: Outlines the standard for organizing re-exports alphabetically and placing them at the end of `lib.rs` files, including both direct and module-level re-exports for clarity.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:best-practice,dev:coding-standards,development,language:rust,modules,re-exports
+CODE:
+```
+// Re-exports
+pub use crate::{
+    nanos::UnixNanos,
+    time::AtomicTime,
+    uuid::UUID4,
+};
+
+// Module-level re-exports
+pub use crate::identifiers::{
+    account_id::AccountId,
+    actor_id::ActorId,
+    client_id::ClientId,
+};
+```
+----------------------------------------
+TITLE: Rust Constructor Patterns: `new()` vs `new_checked()`
+DESCRIPTION: Defines the convention for creating new instances in Rust. `new_checked()` performs correctness checks and returns a `Result` for proper error handling (especially for PyO3), while `new()` panics if validation fails, using `new_checked()` internally.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: Result,constructors,dev:coding-standards,development,feature:new,feature:new_checked,language:rust,validation
+CODE:
+```
+/// Creates a new [`Symbol`] instance with correctness checking.
+///
+/// # Errors
+///
+/// Returns an error if `value` is not a valid string.
+///
+/// # Notes
+///
+/// PyO3 requires a `Result` type for proper error handling and stacktrace printing in Python.
+pub fn new_checked<T: AsRef<str>>(value: T) -> anyhow::Result<Self> {
+    // Implementation
+}
+
+/// Creates a new [`Symbol`] instance.
+///
+/// # Panics
+///
+/// Panics if `value` is not a valid string.
+pub fn new<T: AsRef<str>>(value: T) -> Self {
+    Self::new_checked(value).expect(FAILED)
+}
+```
+----------------------------------------
+TITLE: Rust Struct and Enum Field Documentation Standard
+DESCRIPTION: Mandates that all struct and enum fields must have documentation with terminating periods, illustrating with the `Currency` struct's fields.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:coding-standards,dev:documentation,development,enums,fields,language:rust,structs
+CODE:
+```
+pub struct Currency {
+    /// The currency code as an alpha-3 string (e.g., "USD", "EUR").
+    pub code: Ustr,
+    /// The currency decimal precision.
+    pub precision: u8,
+    /// The ISO 4217 currency code.
+    pub iso4217: u16,
+    /// The full name of the currency.
+    pub name: Ustr,
+    /// The currency type, indicating its category (e.g. Fiat, Crypto).
+    pub currency_type: CurrencyType,
+}
+```
+----------------------------------------
+TITLE: Rust Public Function Documentation Standard
+DESCRIPTION: Outlines the essential elements for documenting all public functions, including their purpose, input argument usage, and conditions under which errors or panics may occur.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:coding-standards,dev:documentation,development,errors,functions,language:rust,panics
+CODE:
+```
+/// Returns a reference to the `AccountBalance` for the specified currency, or `None` if absent.
+///
+/// # Panics
+///
+/// Panics if `currency` is `None` and `self.base_currency` is `None`.
+pub fn base_balance(&self, currency: Option<Currency>) -> Option<&AccountBalance> {
+    // Implementation
+}
+```
+----------------------------------------
+TITLE: Standard Rust File Header Requirements
+DESCRIPTION: All Rust source files within the NautilusTrader project must include this standardized copyright and licensing header. It specifies the copyright holder, the project's website, and the GNU Lesser General Public License Version 3.0 under which the code is distributed.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: copyright,dev:coding-standards,development,header,language:rust,license
+CODE:
+```
+// -------------------------------------------------------------------------------------------------
+//  Copyright (C) 2015-2025 Nautech Systems Pty Ltd. All rights reserved.
+//  https://nautechsystems.io
+//
+//  Licensed under the GNU Lesser General Public License Version 3.0 (the "License");
+//  You may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at https://www.gnu.org/licenses/lgpl-3.0.en.html
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and/
+//  limitations under the License.
+// -------------------------------------------------------------------------------------------------
+```
+----------------------------------------
+TITLE: Rust Module-Level Documentation Standard
+DESCRIPTION: Specifies that all Rust modules must include module-level documentation starting with a brief description, providing an example for correctness checks.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: dev:coding-standards,dev:documentation,development,language:rust,modules
+CODE:
+```
+//! Functions for correctness checks similar to the *design by contract* philosophy.
+//!
+//! This module provides validation checking of function or method conditions.
+//!
+//! A condition is a predicate which must be true just prior to the execution of
+//! some section of code - for correct behavior as per the design specification.
+```
+----------------------------------------
+TITLE: Documenting Inline Unsafe Rust Blocks
+DESCRIPTION: This example illustrates the convention for documenting inline `unsafe` blocks within safe functions. A `// SAFETY:` comment is placed directly above the `unsafe` block, providing a concise explanation for why the unsafe operation is considered valid in that specific context.
+SOURCE: docs/developer_guide/rust.md
+LANGUAGE: Rust
+KEYWORDS: SAFETY,dev:coding-standards,dev:documentation,development,inline block,language:rust,unsafe
+CODE:
+```
+impl Send for MessageBus {
+    fn send(&self) {
+        // SAFETY: Message bus is not meant to be passed between threads
+        unsafe {
+            // unsafe operation here
+        }
+    }
+}
+```

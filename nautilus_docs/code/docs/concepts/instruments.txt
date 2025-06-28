@@ -1,0 +1,236 @@
+TITLE: Retrieve Instrument from Cache (Python)
+DESCRIPTION: Shows how to retrieve a specific instrument object from the central cache using its `InstrumentId`, which is a common method for both backtesting and live trading contexts.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: InstrumentId,cache,instrument,query
+CODE:
+```
+from nautilus_trader.model import InstrumentId
+
+instrument_id = InstrumentId.from_str("ETHUSDT-PERP.BINANCE")
+instrument = self.cache.instrument(instrument_id)
+```
+----------------------------------------
+TITLE: Accessing Locked Balances (Maintenance Margin) in Nautilus Trader Strategy Python
+DESCRIPTION: Illustrates how to query the total amount of funds currently locked as maintenance margin for open positions on a specific trading venue using the `balances_locked` method of the strategy's portfolio.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: locked balance,margin,portfolio,venue
+CODE:
+```
+self.portfolio.balances_locked(venue)
+```
+----------------------------------------
+TITLE: Creating Valid Price and Quantity Objects with Nautilus Trader Python
+DESCRIPTION: Retrieves an instrument from the cache and uses its `make_price` and `make_qty` methods to create correctly formatted price and quantity objects. This is the recommended way to prepare values for order creation.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: instrument,make_price,make_qty,order management,price,quantity
+CODE:
+```
+instrument = self.cache.instrument(instrument_id)
+
+price = instrument.make_price(0.90500)
+quantity = instrument.make_qty(150)
+```
+----------------------------------------
+TITLE: Subscribe to Single Instrument Updates (Python)
+DESCRIPTION: Demonstrates how to subscribe to receive updates specifically for a single instrument identified by its `InstrumentId`.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: data handling,data subscription,instrument,strategy
+CODE:
+```
+self.subscribe_instrument(instrument_id)
+```
+----------------------------------------
+TITLE: Creating and Subscribing to a Synthetic Instrument (Python)
+DESCRIPTION: Demonstrates how to instantiate a `SyntheticInstrument` using component instrument IDs and a formula. Adds the synthetic instrument to the platform's cache and subscribes to its quote ticks. Requires component instruments to be pre-defined.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: add_synthetic,create,data subscription,formula,instrument,instrument:synthetic
+CODE:
+```
+from nautilus_trader.model.instruments import SyntheticInstrument
+
+btcusdt_binance_id = InstrumentId.from_str("BTCUSDT.BINANCE")
+ethusdt_binance_id = InstrumentId.from_str("ETHUSDT.BINANCE")
+
+# Define the synthetic instrument
+synthetic = SyntheticInstrument(
+    symbol=Symbol("BTC-ETH:BINANCE"),
+    price_precision=8,
+    components=[
+        btcusdt_binance_id,
+        ethusdt_binance_id,
+    ],
+    formula=f"{btcusdt_binance_id} - {ethusdt_binance_id}",
+    ts_event=self.clock.timestamp_ns(),
+    ts_init=self.clock.timestamp_ns(),
+)
+
+# Recommended to store the synthetic instruments ID somewhere
+self._synthetic_id = synthetic.id
+
+# Add the synthetic instrument for use by other components
+self.add_synthetic(synthetic)
+
+# Subscribe to quotes for the synthetic instrument
+self.subscribe_quote_ticks(self._synthetic_id)
+```
+----------------------------------------
+TITLE: Creating a Custom Per-Contract Fee Model in NautilusTrader (Python)
+DESCRIPTION: Defines a custom fee model `PerContractFeeModel` that calculates commission based on a fixed amount per contract traded. It inherits from the base `FeeModel` class and implements the `get_commission` method, using Cython-style parameter names to access order, fill quantity, fill price, and instrument details.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: PerContractFeeModel,commission,customization,fee model,instrument
+CODE:
+```
+class PerContractFeeModel(FeeModel):
+    def __init__(self, commission: Money):
+        super().__init__()
+        self.commission = commission
+
+    def get_commission(self, Order_order, Quantity_fill_qty, Price_fill_px, Instrument_instrument):
+        total_commission = Money(self.commission * Quantity_fill_qty, self.commission.currency)
+        return total_commission
+```
+----------------------------------------
+TITLE: Define Instrument via Constructor (Python)
+DESCRIPTION: Illustrates the possibility of defining an instrument manually by directly instantiating the `Instrument` class or one of its subclasses, providing all necessary parameters.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: constructor,definition,instrument
+CODE:
+```
+from nautilus_trader.model.instruments import Instrument
+
+instrument = Instrument(...)  # <-- provide all necessary parameters
+```
+----------------------------------------
+TITLE: Subscribe to All Venue Instruments (Python)
+DESCRIPTION: Shows how to subscribe to receive updates for all instruments associated with a specific venue (exchange) by providing a `Venue` object.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: data handling,data subscription,instrument,strategy,venue
+CODE:
+```
+from nautilus_trader.model import Venue
+
+binance = Venue("BINANCE")
+self.subscribe_instruments(binance)
+```
+----------------------------------------
+TITLE: Handle Instrument Update Event (Python)
+DESCRIPTION: Provides an example of overriding the `on_instrument` method in an actor or strategy class to define custom actions to be taken whenever an instrument update is received.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: actor,handler,handler:on_instrument,instrument,strategy,update
+CODE:
+```
+from nautilus_trader.model.instruments import Instrument
+
+def on_instrument(self, instrument: Instrument) -> None:
+    # Take some action on an instrument update
+    pass
+```
+----------------------------------------
+TITLE: Configuring a Venue with a Custom Fee Model in NautilusTrader (Python)
+DESCRIPTION: Demonstrates how to configure a trading venue within the NautilusTrader engine, specifying parameters like OMS type, account type, base currency, starting balance, and crucially, assigning the previously defined `PerContractFeeModel` instance with a fixed commission amount.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: add_venue,backtesting,configuration,customization,fee model,venue
+CODE:
+```
+from nautilus_trader.model.currencies import USD
+from nautilus_trader.model.objects import Money, Currency
+
+engine.add_venue(
+    venue=venue,
+    oms_type=OmsType.NETTING,
+    account_type=AccountType.MARGIN,
+    base_currency=USD,
+    fee_model=PerContractFeeModel(Money(2.50, USD)),  # 2.50 USD per contract
+    starting_balances=[Money(1_000_000, USD)]  # Starting with 1,000,000 USD balance
+)
+```
+----------------------------------------
+TITLE: Instantiate Test FX Instrument (Python)
+DESCRIPTION: Demonstrates how to create a generic test FX currency pair instrument using the `TestInstrumentProvider` for backtesting purposes.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: FX,TestInstrumentProvider,dev:testing,development,instrument
+CODE:
+```
+from nautilus_trader.test_kit.providers import TestInstrumentProvider
+
+audusd = TestInstrumentProvider.default_fx_ccy("AUD/USD")
+```
+----------------------------------------
+TITLE: Load and Find Exchange Instrument (Python)
+DESCRIPTION: Shows how to load instruments from a specific exchange adapter (Binance Spot) using its `InstrumentProvider` and then find a specific instrument by its `InstrumentId`. Requires an asynchronous client and loading all instruments first.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: Binance,InstrumentProvider,data:loading,find,instrument,integration
+CODE:
+```
+from nautilus_trader.adapters.binance.spot.providers import BinanceSpotInstrumentProvider
+from nautilus_trader.model import InstrumentId
+
+provider = BinanceSpotInstrumentProvider(client=binance_http_client)
+await provider.load_all_async()
+
+btcusdt = InstrumentId.from_str("BTCUSDT.BINANCE")
+instrument = provider.find(btcusdt)
+```
+----------------------------------------
+TITLE: Updating a Synthetic Instrument's Formula (Python)
+DESCRIPTION: Shows how to retrieve a synthetic instrument from the cache by ID, change its derivation formula using `change_formula`, and update the instrument in the platform. Assumes the synthetic instrument already exists.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: change_formula,formula,instrument,instrument:synthetic,update
+CODE:
+```
+# Recover the synthetic instrument from the cache (assuming `synthetic_id` was assigned)
+synthetic = self.cache.synthetic(self._synthetic_id)
+
+# Update the formula, here is a simple example of just taking the average
+new_formula = "(BTCUSDT.BINANCE + ETHUSDT.BINANCE) / 2"
+synthetic.change_formula(new_formula)
+
+# Now update the synthetic instrument
+self.update_synthetic(synthetic)
+```
+----------------------------------------
+TITLE: Triggering Emulated Orders with Synthetic Instruments (Python)
+DESCRIPTION: Illustrates how to create an emulated limit order that is held until triggered by a synthetic instrument's price. Sets the `emulation_trigger` and `trigger_instrument_id` properties of the order.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: emulation,instrument:synthetic,order,order type:emulated,strategy,trigger
+CODE:
+```
+order = self.strategy.order_factory.limit(
+    instrument_id=ETHUSDT_BINANCE.id,
+    order_side=OrderSide.BUY,
+    quantity=Quantity.from_str("1.5"),
+    price=Price.from_str("30000.00000000"),  # <-- Synthetic instrument price
+    emulation_trigger=TriggerType.DEFAULT,
+    trigger_instrument_id=self._synthetic_id,  # <-- Synthetic instrument identifier
+)
+
+self.strategy.submit_order(order)
+```
+----------------------------------------
+TITLE: Nautilus Trader Margin Calculation Formulas Python
+DESCRIPTION: Presents the Python formulas used internally by the `MarginAccount` class to calculate the required initial and maintenance margins for a position, incorporating notional value, leverage, margin rates, and taker fees.
+SOURCE: docs/concepts/instruments.md
+LANGUAGE: python
+KEYWORDS: calculation,formula,initial margin,maintenance margin,margin,portfolio
+CODE:
+```
+# Initial margin calculation
+margin_init = (notional_value / leverage * margin_init) + (notional_value / leverage * taker_fee)
+
+# Maintenance margin calculation
+margin_maint = (notional_value / leverage * margin_maint) + (notional_value / leverage * taker_fee)
+```
