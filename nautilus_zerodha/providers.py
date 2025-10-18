@@ -79,16 +79,18 @@ class ZerodhaInstrumentProvider(InstrumentProvider):
             ts_init = current_time_ns
             
             if instrument_type == 'EQ':
+                # Equity constructor signature (PyO3 positional args):
+                # Equity(instrument_id, raw_symbol, currency, price_precision,
+                #        price_increment, lot_size, ts_event, ts_init, **kwargs)
                 return Equity(
-                    instrument_id=instrument_id,
-                    raw_symbol=Symbol(tradingsymbol),
-                    price_precision=price_precision,
-                    price_increment=price_increment,
-                    size_precision=size_precision,
-                    size_increment=size_increment,
-                    ts_event=ts_event,
-                    ts_init=ts_init,
-                    isin=None,  # Not provided by Zerodha
+                    instrument_id,           # InstrumentId
+                    Symbol(tradingsymbol),   # raw_symbol: Symbol
+                    INR,                     # currency: Currency
+                    price_precision,         # price_precision: int
+                    price_increment,         # price_increment: Price
+                    size_increment,          # lot_size: Quantity
+                    ts_event,                # ts_event: uint64_t
+                    ts_init,                 # ts_init: uint64_t
                 )
                 
             elif instrument_type == 'FUT':
@@ -190,21 +192,29 @@ class ZerodhaInstrumentProvider(InstrumentProvider):
         }
 
         Zerodha instrument fields and their mapping to Nautilus:
-        - tradingsymbol -> Symbol  
+        - tradingsymbol -> Symbol
         - exchange -> Venue
         - instrument_type -> Instrument type (EQ=Equity, FUT=FuturesContract, CE/PE=OptionsContract)
         - tick_size -> price_increment & price_precision
-        - lot_size -> size_increment  
+        - lot_size -> size_increment
         - expiry -> expiry_date (for derivatives)
         - strike -> strike_price (for options)
         """
-        # Fetch raw instrument data from API
-        raw_instruments = await self._client.get_all_instruments_async()
-        
+        # Extract exchange filter if provided (for API-level filtering)
+        exchange_filter = None
+        if filters and 'exchange' in filters:
+            exchange_filter = filters['exchange']
+            # If exchange is a list, use the first one for API call
+            if isinstance(exchange_filter, list):
+                exchange_filter = exchange_filter[0] if exchange_filter else None
+
+        # Fetch raw instrument data from API (with exchange filter for efficiency)
+        raw_instruments = await self._client.get_all_instruments_async(exchange=exchange_filter)
+
         instrument_count = 0
         failed_count = 0
         filtered_count = 0
-        
+
         for raw_instrument in raw_instruments:
             # Apply filters if provided
             if filters:
@@ -212,11 +222,9 @@ class ZerodhaInstrumentProvider(InstrumentProvider):
                 if not self._matches_filters(raw_instrument, filters):
                     filtered_count += 1
                     continue
-                    
+
             # Create Nautilus instrument from Zerodha data
-            ic(raw_instrument)
             nautilus_instrument = self._create_nautilus_instrument(raw_instrument)
-            ic(nautilus_instrument)
             
             if nautilus_instrument:
                 # Cache the instrument
