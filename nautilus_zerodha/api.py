@@ -37,16 +37,21 @@ class ZerodhaAPIClient:
         profile = self.kite.profile()
         return profile
         
-    async def get_all_instruments_async(self) -> List[Dict[str, Any]]:
+    async def get_all_instruments_async(self, exchange: str | None = None) -> List[Dict[str, Any]]:
         """Fetch all instruments from Zerodha API.
-        
-        TODO: Implement actual API call to Zerodha instruments endpoint.
-        TODO: Research correct endpoint URL and response format.
-        TODO: Verify authentication header format.
-        
+
+        Args:
+            exchange: Optional exchange filter (e.g., 'NSE', 'BSE', 'NFO', 'BFO').
+                     If provided, only instruments from this exchange are returned.
+
         Returns:
             List of raw instrument dictionaries from Zerodha API.
         """
-        instruments = self.kite.instruments()
-        return instruments[:5]
+        # KiteConnect instruments() method can take an exchange parameter
+        if exchange:
+            instruments = self.kite.instruments(exchange=exchange)
+        else:
+            instruments = self.kite.instruments()
+
+        return instruments
         
