@@ -6,14 +6,43 @@ This file provides guidance to Claude Code when working with the nautilus_zerodh
 
 The `nautilus_zerodha` project is a Nautilus Trader adapter for the Zerodha KiteConnect API. It provides integration between Nautilus Trader's trading framework and Zerodha's brokerage services.
 
+## Integration with TradeRunner ✨
+
+This adapter is **fully integrated** with the traderunner application via the `NautilusFactory` class. Authentication is handled seamlessly - no manual token copying required!
+
+**Usage from TradeRunner:**
+```bash
+cd ../traderunner
+hatch run python main.py nautilus test-instruments  # Automatic auth + 8,387+ instruments
+```
+
+**Programmatic Usage:**
+```python
+from traderunner.cli import get_app_instance
+from traderunner.integrations import NautilusFactory
+
+app = get_app_instance()
+factory = NautilusFactory(app)
+provider = factory.create_instrument_provider()  # Auto-authenticated!
+await provider.load_all_async(filters={'exchange': 'NSE'})
+```
+
+**Key Integration Features:**
+- ✅ Automatic authentication via TradeRunner's OAuth flow
+- ✅ Token validation and refresh handled transparently
+- ✅ Exchange-level filtering (NSE, BSE, NFO, BFO, etc.)
+- ✅ 8,387+ NSE instruments successfully loaded
+- ✅ Rich CLI output with tables and panels
+
 ## Architecture
 
 ### Core Components
 
 1. **api.py** - The low-level async API client
-   - Handles all HTTP requests to Zerodha KiteConnect API
-   - Manages authentication and rate limiting
-   - Provides async methods for all API endpoints
+   - Uses official `kiteconnect` Python SDK for API calls
+   - Manages authentication via API key and access token
+   - Currently implements `get_all_instruments_async()` for fetching instruments
+   - Authentication validated on initialization via `validate_access_token()`
 
 2. **config.py** - Configuration classes
    - `ZerodhaAdapterConfig` - Main configuration class
@@ -51,29 +80,154 @@ nautilus_zerodha/
 ├── data.py              # Data client (future)
 ├── execution.py         # Execution client (future)
 ├── factories.py         # Nautilus factory classes
-└── common/              # Shared utilities
+└── common/              # Shared utilities (not yet implemented)
     ├── __init__.py
-    └── enums.py         # Zerodha-specific enums and constants
+    ├── enums.py         # Zerodha-specific enums and constants
+    └── instrument.py    # Instrument-related utilities
+```
+
+### Authentication Flow
+
+The authentication flow in api.py:14-23 works as follows:
+
+1. Create `ZerodhaAdapterConfig` with `api_key` and `access_token`
+2. `ZerodhaAPIClient.__init__()` creates a `KiteConnect` instance with the API key
+3. Sets the access token on the KiteConnect instance
+4. Calls `validate_access_token()` which fetches the user profile to verify the token
+5. If validation succeeds, sets `self.authenticated = True`
+6. If validation fails, raises `RuntimeError`
+
+**Important:** The access token must be obtained separately (via OAuth flow). This adapter does not handle the OAuth flow - it expects a valid access token to be provided.
+
+### Filtering Instruments
+
+The `load_all_async()` method supports optional filtering via the `filters` parameter (providers.py:210-214):
+
+```python
+# Load only NSE equity instruments
+await provider.load_all_async(filters={
+    'exchange': 'NSE',
+    'instrument_type': 'EQ'
+})
+
+# Load multiple instrument types
+await provider.load_all_async(filters={
+    'exchange': ['NSE', 'BSE'],
+    'instrument_type': ['EQ', 'FUT']
+})
+```
+
+The `_matches_filters()` method (providers.py:230-240) supports both single values and lists of values for filtering.
+
+### Instrument Mapping Architecture
+
+The `ZerodhaInstrumentProvider` in providers.py:173-264 maps Zerodha instruments to Nautilus instrument types:
+
+**Zerodha → Nautilus Type Mapping:**
+- `instrument_type: "EQ"` → `Equity` (stocks on NSE/BSE)
+- `instrument_type: "FUT"` → `FuturesContract` (index/equity futures)
+- `instrument_type: "CE"` → `OptionsContract` with `OptionKind.CALL`
+- `instrument_type: "PE"` → `OptionsContract` with `OptionKind.PUT`
+
+**Key Field Mappings:**
+- `tradingsymbol` → `Symbol` (e.g., "INFY", "NIFTY25JAN25FUT")
+- `exchange` → `Venue` (e.g., "NSE", "NFO", "BFO")
+- `tick_size` → `price_increment` and `price_precision`
+- `lot_size` → `size_increment` and `multiplier`
+- `expiry` → `expiration_ns` (for derivatives, converted to nanoseconds)
+- `strike` → `strike_price` (for options)
+
+**Zerodha Raw Instrument Format:**
+```python
+{
+    'exchange': 'BFO',
+    'exchange_token': '824914',
+    'expiry': datetime.date(2025, 7, 8),
+    'instrument_token': 211177989,
+    'instrument_type': 'FUT',
+    'last_price': 0.0,
+    'lot_size': 20,
+    'name': 'SENSEX',
+    'segment': 'BFO-FUT',
+    'strike': 0.0,
+    'tick_size': 0.05,
+    'tradingsymbol': 'SENSEX25708FUT'
+}
 ```
 
 ## Development Workflow
 
+### Project Configuration
+
+The project uses setuptools with pyproject.toml for package management:
+- Python 3.8+ required (pyproject.toml:12)
+- Black line length: 88 characters (pyproject.toml:31-33)
+- isort configured with black profile (pyproject.toml:35-37)
+- mypy type checking enabled with strict settings (pyproject.toml:39-43)
+
+### Key Commands
+
+**Installation:**
+```bash
+# Install package in development mode
+pip install -e .
+
+# Install with development dependencies (recommended)
+pip install -e ".[dev]"
+```
+
+**Testing:**
+```bash
+# Run all tests
+python -m pytest
+
+# Run specific test file
+python -m pytest tests/test_providers.py
+
+# Run with verbose output
+python -m pytest -v
+
+# Run with async support (required for this project)
+python -m pytest -v --asyncio-mode=auto
+
+# Run tests with coverage
+pytest --cov=nautilus_zerodha tests/
+```
+
+**Code Quality:**
+```bash
+# Format code with black
+black nautilus_zerodha/
+
+# Sort imports
+isort nautilus_zerodha/
+
+# Type checking
+mypy nautilus_zerodha/
+```
+
 ### Implementation Priority
-1. **api.py** - Basic API client with authentication
-2. **config.py** - Configuration classes
-3. **providers.py** - Instrument provider (primary goal)
-4. **data.py** - Live data client
-5. **execution.py** - Execution client
-6. **factories.py** - Nautilus integration
+1. **api.py** - Basic API client with authentication (✓ IMPLEMENTED)
+2. **config.py** - Configuration classes (✓ IMPLEMENTED)
+3. **providers.py** - Instrument provider (✓ IMPLEMENTED - primary goal)
+4. **data.py** - Live data client (TODO)
+5. **execution.py** - Execution client (TODO)
+6. **factories.py** - Nautilus integration (TODO)
 
 ### Key Dependencies
 - `nautilus-trader` - Core trading framework
-- `aiohttp` - Async HTTP client for API calls
-- `pytest` - Testing framework
-- `pytest-asyncio` - Async testing support
+- `kiteconnect` - Official Zerodha KiteConnect SDK (used by api.py for synchronous API calls)
+- `aiohttp` - Async HTTP client (declared in pyproject.toml but not actively used yet)
+- `pandas` - Data manipulation (used in providers.py for timestamp handling)
+- `icecream` - Debugging output (used throughout for development debugging - DO NOT REMOVE `ic` calls)
+- `pytest` - Testing framework (dev dependency)
+- `pytest-asyncio` - Async testing support (dev dependency)
+- `black` - Code formatting (dev dependency)
+- `isort` - Import sorting (dev dependency)
+- `mypy` - Type checking (dev dependency)
 
 ### Testing Strategy
-- Unit tests for each component
+- Unit tests for each component (in tests/ directory)
 - Mock Zerodha API responses
 - Integration tests with live API (sandbox)
 - Performance tests for data streaming
@@ -83,18 +237,84 @@ nautilus_zerodha/
 The adapter is designed to be imported and used by the `traderunner` application:
 
 ```python
-from nautilus_zerodha import ZerodhaInstrumentProvider
-from nautilus_zerodha.config import ZerodhaAdapterConfig
+from nautilus_zerodha import ZerodhaInstrumentProvider, ZerodhaAPIClient, ZerodhaAdapterConfig
+
+# Create configuration
+config = ZerodhaAdapterConfig(
+    api_key="your_api_key",
+    access_token="your_access_token"
+)
+
+# Create API client
+client = ZerodhaAPIClient(config)
+
+# Create instrument provider
+provider = ZerodhaInstrumentProvider(client)
+
+# Load instruments
+await provider.load_all_async()
+
+# Find specific instrument
+instrument = provider.find(InstrumentId.from_str("INFY.NSE"))
 ```
+
+See implementation_guide.md for detailed usage patterns.
 
 ## Important Notes
 
-- All API interactions should be async
-- Proper error handling for API rate limits
-- Secure credential management
-- Nautilus-compliant data types and formats
-- Thread-safe design for live trading
-- Don't remove ic imports/calls - those are for debugging
+### Current Implementation State
+- **api.py**: Fully functional implementation using `kiteconnect` SDK. The `get_all_instruments_async()` supports exchange-level filtering for efficient API calls. Note: Uses synchronous `kiteconnect` SDK wrapped in async methods.
+- **providers.py**: Fully implemented with support for EQ, FUT, CE, and PE instrument types. Includes comprehensive error handling and logging.
+- **config.py**: Two config classes defined - `ZerodhaAdapterConfig` (inherits from `NautilusConfig`) and `ZerodhaInstrumentProviderConfig` (inherits from `InstrumentProviderConfig`)
+- **data.py, execution.py, factories.py**: Empty stub files - not yet implemented
+- **common/enums.py, common/instrument.py**: Empty stub files - not yet implemented
+- **tests/**: Test files exist but are empty - no tests written yet
+
+### Development Guidelines
+
+**Code Style:**
+- All API interactions should be async (even if wrapping sync calls)
+- Use type hints consistently (mypy is configured in pyproject.toml:40-43)
+- **Don't remove `ic` imports/calls** - those are for debugging with icecream library
+- Follow black formatting (line-length = 88, target Python 3.8+)
+
+**Nautilus Integration:**
+- Nautilus-compliant data types and formats (use `Price`, `Quantity`, `InstrumentId`, etc.)
+- Timestamps must be in nanoseconds for Nautilus (`ts_event`, `ts_init`, `expiration_ns`, `activation_ns`)
+- Use `INR` currency constant from `nautilus_trader.model.currencies` for all Indian instruments
+- Configuration classes should inherit from Nautilus base classes (`NautilusConfig`, `InstrumentProviderConfig`)
+
+**Error Handling:**
+- The `_create_nautilus_instrument()` method (providers.py:51-171) handles all type conversions and error cases
+- Log warnings for unsupported instrument types, missing fields, or invalid data
+- Return `None` from `_create_nautilus_instrument()` on errors (don't crash the entire load)
+- Use proper exception types (`RuntimeError` for auth failures, etc.)
+
+**Security:**
+- Never hardcode credentials
+- Credentials should come from config or environment variables
+- Proper error handling for API rate limits (not yet implemented)
+
+### Known Limitations
+- `load_async()` and `load_ids_async()` methods in providers.py load all instruments instead of specific ones (optimization TODO)
+- WebSocket support not yet implemented
+- No live data streaming or execution capabilities yet
+- The `kiteconnect` SDK used in api.py is synchronous - async methods are wrappers around sync calls
+- No test coverage yet - test files are empty stubs
+- Instrument indices (NIFTY 50, etc.) with tick_size=0.0 are skipped (validation error)
+
+### Debugging
+
+**Icecream Debug Output:**
+- The project uses `icecream` library for debug output (imported as `ic`)
+- Debug statements in providers.py:217-219 show raw instrument data and converted Nautilus instruments
+- Do NOT remove `ic` imports or calls - they're intentional for development
+
+**Common Issues:**
+- **Authentication Errors:** Ensure access token is valid and not expired. The token must be obtained through Zerodha's OAuth flow separately.
+- **Type Conversion Errors:** Check providers.py `_create_nautilus_instrument()` logs for warnings about missing fields or invalid data
+- **Missing Instruments:** If instruments aren't loading, check the filtering logic in `_matches_filters()` and ensure raw data format matches expected structure
+- **Async Issues:** Remember that `kiteconnect` SDK is sync - all async methods are wrappers
 
 ## Nautilus Documentation Guidelines
 
