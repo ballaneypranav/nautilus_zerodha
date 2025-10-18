@@ -13,6 +13,9 @@ requires-python = ">=3.8"
 dependencies = [
     "nautilus-trader",
     "aiohttp",
+    "kiteconnect>=4.0.0",
+    "pandas",
+    "icecream",
 ]
 
 [project.optional-dependencies]
