@@ -54,8 +54,27 @@ class ZerodhaInstrumentProvider(InstrumentProvider):
             instrument_type = raw_instrument.get('instrument_type')
             tradingsymbol = raw_instrument.get('tradingsymbol')
             exchange = raw_instrument.get('exchange')
-            tick_size = float(raw_instrument.get('tick_size', 0.01))
-            lot_size = int(raw_instrument.get('lot_size', 1))
+
+            # Zerodha occasionally returns zero tick/lot sizes for index-like symbols.
+            raw_tick_size = raw_instrument.get('tick_size', 0.01)
+            tick_size = float(raw_tick_size if raw_tick_size not in (None, "") else 0.01)
+            if tick_size <= 0:
+                self._log.warning(
+                    "Invalid tick_size=%s for %s, defaulting to 0.01",
+                    raw_tick_size,
+                    tradingsymbol,
+                )
+                tick_size = 0.01
+
+            raw_lot_size = raw_instrument.get('lot_size', 1)
+            lot_size = int(raw_lot_size if raw_lot_size not in (None, "") else 1)
+            if lot_size <= 0:
+                self._log.warning(
+                    "Invalid lot_size=%s for %s, defaulting to 1",
+                    raw_lot_size,
+                    tradingsymbol,
+                )
+                lot_size = 1
             
             if not all([instrument_type, tradingsymbol, exchange]):
                 self._log.warning(f"Missing required fields in instrument data: instrument_type={instrument_type}, tradingsymbol={tradingsymbol}, exchange={exchange}")
